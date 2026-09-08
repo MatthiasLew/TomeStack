@@ -1,47 +1,6 @@
 import { Author, Series, UserAccount } from "@/types";
 
-export const initialUserAccounts: Record<string, UserAccount> = {
-  kamil: {
-    id: "kamil",
-    name: "Kamil",
-    email: "kamil@kolekcjoner.pl",
-    role: "Kolekcjoner Fantasy",
-    avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&q=80",
-    ownedBooks: {
-      "w-01": "ed-w1-2",
-      "w-02": "ed-w2-2",
-      "w-03": "ed-w3-1",
-      "w-04": "ed-w4-1",
-      "w-06": "ed-w6-1",
-      "w-08": "ed-w8-1",
-      "hus-01": "ed-hus1",
-      "lotr-01": "ed-l1",
-      "lotr-02": "ed-l3",
-      "dune-01": "ed-d1",
-      "dune-02": "ed-d2",
-      "hp-01": "ed-hp1",
-      "hp-02": "ed-hp2",
-      "hp-03": "ed-hp3",
-    },
-  },
-  anna: {
-    id: "anna",
-    name: "Anna",
-    email: "anna.czyta@gmail.com",
-    role: "Czytelniczka & Fanka HP",
-    avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&q=80",
-    ownedBooks: {
-      "hp-01": "ed-hp1",
-      "hp-02": "ed-hp2",
-      "hp-03": "ed-hp3",
-      "lotr-01": "ed-l1",
-      "lotr-02": "ed-l3",
-      "lotr-03": "ed-l4",
-      "w-01": "ed-w1-1",
-      "w-02": "ed-w2-1",
-    },
-  },
-};
+export const initialUserAccounts: Record<string, UserAccount> = {};
 
 export const authorsDatabase: Record<string, Author> = {
   "Andrzej Sapkowski": {

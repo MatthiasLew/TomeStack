@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { Series, Book, FormatFilter, Language, UserAccount } from "@/types";
 import { translations } from "@/data/mockData";
 import { calculateSeriesBasket } from "@/lib/pricing/priceEngine";
+import { BookCover } from "./BookCover";
 import {
   Target,
   ExternalLink,
@@ -199,10 +200,10 @@ export const MissingRadar: React.FC<MissingRadarProps> = ({
                   onClick={() => onOpenBookModal(book, series)}
                   className="w-20 sm:w-24 shrink-0 aspect-[2/3] rounded-lg overflow-hidden cursor-pointer shadow-md bg-gray-900 relative"
                 >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
+                  <BookCover
                     src={book.cover}
-                    alt={book.title}
+                    isbn={book.editions[0]?.isbn}
+                    title={book.title}
                     className="w-full h-full object-cover hover:scale-105 transition"
                   />
                   <span className="absolute top-1.5 left-1.5 px-1 py-0.5 rounded bg-black/80 text-[10px] font-bold text-white">

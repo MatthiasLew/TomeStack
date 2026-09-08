@@ -12,7 +12,6 @@ import {
   BindingFormat,
 } from "@/types";
 import {
-  initialUserAccounts,
   authorsDatabase,
   initialSeriesDatabase,
 } from "@/data/mockData";
@@ -35,13 +34,37 @@ import {
 
 export default function Home() {
   const [lang, setLang] = useState<Language>("pl");
-  const [userAccounts, setUserAccounts] = useState<Record<string, UserAccount>>(
-    initialUserAccounts
-  );
-  const [currentUser, setCurrentUser] = useState<UserAccount | null>(
-    initialUserAccounts["kamil"]
-  );
+  const [currentUser, setCurrentUser] = useState<UserAccount | null>(null);
+  const [isAuthLoaded, setIsAuthLoaded] = useState(false);
   const [seriesList, setSeriesList] = useState<Series[]>(initialSeriesDatabase);
+
+  // Load user session from localStorage on startup
+  React.useEffect(() => {
+    try {
+      const stored = localStorage.getItem("tomestack_user");
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        setCurrentUser(parsed);
+      } else {
+        // Automatically prompt sign-in on first visit so each user has their own private shelf
+        setIsAuthOpen(true);
+      }
+    } catch {
+      setIsAuthOpen(true);
+    } finally {
+      setIsAuthLoaded(true);
+    }
+  }, []);
+
+  // Save session when user changes
+  React.useEffect(() => {
+    if (!isAuthLoaded) return;
+    if (currentUser) {
+      localStorage.setItem("tomestack_user", JSON.stringify(currentUser));
+    } else {
+      localStorage.removeItem("tomestack_user");
+    }
+  }, [currentUser, isAuthLoaded]);
 
   // Filters & Tabs
   const [formatFilter, setFormatFilter] = useState<FormatFilter>("all");
@@ -97,14 +120,6 @@ export default function Home() {
     setLang((prev) => (prev === "pl" ? "en" : "pl"));
   };
 
-  const handleSwitchUser = (userId: string) => {
-    if (userId === "guest") {
-      setCurrentUser(null);
-    } else if (userAccounts[userId]) {
-      setCurrentUser(userAccounts[userId]);
-    }
-  };
-
   // Effect to load cloud shelf if Supabase is connected
   const currentUserId = currentUser?.id;
   React.useEffect(() => {
@@ -135,7 +150,6 @@ export default function Home() {
 
     const updatedUser = { ...currentUser, ownedBooks: currentOwned };
     setCurrentUser(updatedUser);
-    setUserAccounts((prev) => ({ ...prev, [currentUser.id]: updatedUser }));
   };
 
   const handleSelectEdition = (bookId: string, editionId: string) => {
@@ -150,7 +164,6 @@ export default function Home() {
 
     const updatedUser = { ...currentUser, ownedBooks: currentOwned };
     setCurrentUser(updatedUser);
-    setUserAccounts((prev) => ({ ...prev, [currentUser.id]: updatedUser }));
   };
 
   const handleAddBook = (data: {
@@ -220,20 +233,6 @@ export default function Home() {
     }
   };
 
-  const handleCustomLogin = (name: string, email: string) => {
-    const id = `user-${Date.now()}`;
-    const newUser: UserAccount = {
-      id,
-      name,
-      email,
-      role: "Własna biblioteczka",
-      avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&q=80",
-      ownedBooks: { "w-01": "ed-w1-2", "lotr-01": "ed-l1" },
-    };
-    setUserAccounts((prev) => ({ ...prev, [id]: newUser }));
-    setCurrentUser(newUser);
-  };
-
   // Filter series based on search query
   const filteredSeries = useMemo(() => {
     if (!searchQuery.trim()) return seriesList;
@@ -278,7 +277,7 @@ export default function Home() {
       {/* User Banner */}
       <UserBanner
         currentUser={currentUser}
-        onSwitchUser={handleSwitchUser}
+        onOpenAuth={() => setIsAuthOpen(true)}
         lang={lang}
       />
 
@@ -298,7 +297,7 @@ export default function Home() {
           lang={lang}
         />
 
-        {/* Filter Toolbar */}
+        {/* Filters and Tabs */}
         <FilterToolbar
           formatFilter={formatFilter}
           onSetFormatFilter={setFormatFilter}
@@ -309,38 +308,46 @@ export default function Home() {
           lang={lang}
         />
 
-        {/* Tab 1: Series View */}
+        {/* Content based on Active Tab */}
         {activeTab === "series" && (
           <div className="space-y-6">
-            {filteredSeries.map((series) => (
-              <SeriesCard
-                key={series.seriesId}
-                series={series}
-                currentUser={currentUser}
-                formatFilter={formatFilter}
-                statusFilter={statusFilter}
-                lang={lang}
-                onOpenBookModal={(book, s) => setActiveBookModal({ book, series: s })}
-                onOpenAuthorModal={(author) => setActiveAuthorName(author)}
-                onToggleOwned={handleToggleOwned}
-              />
-            ))}
+            {filteredSeries.length === 0 ? (
+              <div className="card-glass rounded-2xl p-12 text-center text-gray-400">
+                <p>{lang === "pl" ? "Brak cykli pasujących do kryteriów." : "No series matching filters."}</p>
+              </div>
+            ) : (
+              filteredSeries.map((series) => (
+                <SeriesCard
+                  key={series.seriesId}
+                  series={series}
+                  currentUser={currentUser}
+                  formatFilter={formatFilter}
+                  statusFilter={statusFilter}
+                  lang={lang}
+                  onOpenBookModal={(book, s) =>
+                    setActiveBookModal({ book, series: s })
+                  }
+                  onOpenAuthorModal={(author) => setActiveAuthorName(author)}
+                  onToggleOwned={handleToggleOwned}
+                />
+              ))
+            )}
           </div>
         )}
 
-        {/* Tab 2: Missing Radar View */}
         {activeTab === "missing" && (
           <MissingRadar
             seriesList={seriesList}
             currentUser={currentUser}
             formatFilter={formatFilter}
             lang={lang}
-            onOpenBookModal={(book, s) => setActiveBookModal({ book, series: s })}
+            onOpenBookModal={(book, s) =>
+              setActiveBookModal({ book, series: s })
+            }
             onToggleOwned={handleToggleOwned}
           />
         )}
 
-        {/* Tab 3: All Volumes Flat View */}
         {activeTab === "all" && (
           <div className="space-y-6">
             {filteredSeries.map((series) => (
@@ -348,10 +355,12 @@ export default function Home() {
                 key={series.seriesId}
                 series={series}
                 currentUser={currentUser}
-                formatFilter={formatFilter}
-                statusFilter={statusFilter}
+                formatFilter="all"
+                statusFilter="all"
                 lang={lang}
-                onOpenBookModal={(book, s) => setActiveBookModal({ book, series: s })}
+                onOpenBookModal={(book, s) =>
+                  setActiveBookModal({ book, series: s })
+                }
                 onOpenAuthorModal={(author) => setActiveAuthorName(author)}
                 onToggleOwned={handleToggleOwned}
               />
@@ -398,12 +407,22 @@ export default function Home() {
       {/* User Auth Modal */}
       {isAuthOpen && (
         <AuthModal
-          userAccounts={userAccounts}
-          currentUser={currentUser}
           lang={lang}
           onClose={() => setIsAuthOpen(false)}
-          onSelectUser={handleSwitchUser}
-          onCustomLogin={handleCustomLogin}
+          onLogin={(name, email) => {
+            const id = `user-${email.replace(/[^a-zA-Z0-9]/g, "_")}`;
+            const user: UserAccount = {
+              id,
+              name,
+              email,
+              role: lang === "pl" ? "Kolekcjoner" : "Collector",
+              avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(name)}`,
+              ownedBooks: {},
+            };
+            setCurrentUser(user);
+            setIsAuthOpen(false);
+          }}
+          isForcedModal={!currentUser}
         />
       )}
 

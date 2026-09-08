@@ -4,6 +4,7 @@ import React from "react";
 import { Series, Book, FormatFilter, StatusFilter, Language, UserAccount } from "@/types";
 import { translations } from "@/data/mockData";
 import { Check, Plus } from "lucide-react";
+import { BookCover } from "./BookCover";
 
 interface SeriesCardProps {
   series: Series;
@@ -128,10 +129,10 @@ export const SeriesCard: React.FC<SeriesCardProps> = ({
                   onClick={() => onOpenBookModal(book, series)}
                   className="relative aspect-[2/3] w-full rounded-lg overflow-hidden cursor-pointer shadow-md bg-gray-900"
                 >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
+                  <BookCover
                     src={book.cover}
-                    alt={book.title}
+                    isbn={book.editions[0]?.isbn}
+                    title={book.title}
                     className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
                   />
                   {/* Volume pill */}

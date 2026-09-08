@@ -1,146 +1,127 @@
 "use client";
 
 import React, { useState } from "react";
-import { UserAccount, Language } from "@/types";
-import { X, User, Check } from "lucide-react";
+import { Language } from "@/types";
+import { User, Lock, Mail, ArrowRight } from "lucide-react";
 
 interface AuthModalProps {
-  userAccounts: Record<string, UserAccount>;
-  currentUser: UserAccount | null;
   lang: Language;
-  onClose: () => void;
-  onSelectUser: (userId: string) => void;
-  onCustomLogin: (name: string, email: string) => void;
+  onClose?: () => void;
+  onLogin: (name: string, email: string) => void;
+  isForcedModal?: boolean;
 }
 
 export const AuthModal: React.FC<AuthModalProps> = ({
-  userAccounts,
-  currentUser,
   lang,
   onClose,
-  onSelectUser,
-  onCustomLogin,
+  onLogin,
+  isForcedModal = false,
 }) => {
-  const [customName, setCustomName] = useState("");
-  const [customEmail, setCustomEmail] = useState("");
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [error, setError] = useState<string | null>(null);
 
-  const handleCustomSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!customName.trim()) return;
-    onCustomLogin(customName, customEmail || "user@example.com");
-    onClose();
+    if (!name.trim()) {
+      setError(lang === "pl" ? "Podaj swoje imię lub pseudonim." : "Please enter your name or nickname.");
+      return;
+    }
+    if (!email.trim() || !email.includes("@")) {
+      setError(lang === "pl" ? "Wpisz poprawny adres e-mail." : "Please enter a valid email address.");
+      return;
+    }
+
+    onLogin(name.trim(), email.trim());
+    if (onClose) onClose();
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-gray-900 border border-gray-700 w-full max-w-md rounded-2xl overflow-hidden shadow-2xl p-6">
-        <div className="flex items-center justify-between pb-3 border-b border-gray-800">
-          <div className="flex items-center gap-2">
-            <User className="w-5 h-5 text-brand-400" />
-            <h3 className="text-lg font-bold text-white">
-              {lang === "pl" ? "Logowanie do Biblioteczki" : "Library Account Login"}
-            </h3>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
+      <div className="bg-gray-900 border border-gray-700 w-full max-w-md rounded-2xl overflow-hidden shadow-2xl p-6 sm:p-8">
+        <div className="flex items-center justify-between pb-4 border-b border-gray-800">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 rounded-xl bg-brand-500/10 text-brand-400 border border-brand-500/20">
+              <Lock className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-white">
+                {lang === "pl" ? "Zaloguj się do swojej biblioteki" : "Sign in to your library"}
+              </h3>
+              <p className="text-xs text-gray-400">
+                {lang === "pl"
+                  ? "TomeStack chroni Twoją półkę przed edycją przez obcych"
+                  : "Protect your personal collection from unauthorized changes"}
+              </p>
+            </div>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-white p-1">
-            <X className="w-5 h-5" />
-          </button>
+          {!isForcedModal && onClose && (
+            <button onClick={onClose} className="text-gray-400 hover:text-white p-1">
+              ✕
+            </button>
+          )}
         </div>
 
-        <div className="space-y-4 mt-4">
-          <p className="text-xs text-gray-400">
+        <div className="mt-5 space-y-4">
+          <p className="text-xs text-gray-300 leading-relaxed bg-gray-950/60 p-3 rounded-xl border border-gray-800">
             {lang === "pl"
-              ? "Wybierz jedno z przygotowanych kont demonstracyjnych, aby zobaczyć inną kolekcję i stopień ukończenia:"
-              : "Select a demo collector profile to test different series completion rates:"}
+              ? "Wpisz swoje dane, aby uzyskać dostęp do własnej półki. Twoja kolekcja, postęp serii i brakujące tomy synchronizują się z chmurą PostgreSQL."
+              : "Enter your details to access your personal shelf. Your owned editions and series completion stats sync to your cloud database."}
           </p>
 
-          {/* Presets */}
-          <div className="space-y-2">
-            {Object.values(userAccounts).map((acc) => {
-              const isSelected = currentUser?.id === acc.id;
-
-              return (
-                <div
-                  key={acc.id}
-                  onClick={() => {
-                    onSelectUser(acc.id);
-                    onClose();
-                  }}
-                  className={`p-3 rounded-xl border flex items-center justify-between cursor-pointer transition ${
-                    isSelected
-                      ? "bg-brand-950/40 border-brand-500/60"
-                      : "bg-gray-950/40 border-gray-800 hover:border-gray-700"
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={acc.avatar}
-                      alt={acc.name}
-                      className="w-10 h-10 rounded-full object-cover border border-gray-700"
-                    />
-                    <div>
-                      <p className="text-sm font-bold text-white">{acc.name}</p>
-                      <p className="text-xs text-gray-400">{acc.role}</p>
-                    </div>
-                  </div>
-
-                  {isSelected ? (
-                    <span className="text-xs px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-bold flex items-center gap-1">
-                      <Check className="w-3.5 h-3.5" />
-                      <span>Aktywne</span>
-                    </span>
-                  ) : (
-                    <button className="text-xs text-brand-400 font-semibold hover:underline">
-                      Przełącz
-                    </button>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Divider */}
-          <div className="relative my-4">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-800" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-gray-900 px-2 text-gray-500">
-                {lang === "pl" ? "Lub utwórz własną półkę" : "Or custom login"}
-              </span>
-            </div>
-          </div>
-
-          {/* Custom login form */}
-          <form onSubmit={handleCustomSubmit} className="space-y-3">
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="text-xs text-gray-400 block mb-1">
+              <label className="text-xs font-semibold text-gray-300 block mb-1">
                 {lang === "pl" ? "Twoje imię / Nick" : "Your Name / Nick"}
               </label>
-              <input
-                type="text"
-                value={customName}
-                onChange={(e) => setCustomName(e.target.value)}
-                placeholder="np. Michał"
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg p-2 text-sm text-white focus:outline-none focus:border-brand-500"
-              />
+              <div className="relative">
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => {
+                    setName(e.target.value);
+                    setError(null);
+                  }}
+                  placeholder={lang === "pl" ? "np. Maciej" : "e.g. Alex"}
+                  required
+                  className="w-full bg-gray-800 border border-gray-700 rounded-xl p-2.5 pl-9 text-sm text-white focus:outline-none focus:border-brand-500 transition"
+                />
+                <User className="w-4 h-4 text-gray-500 absolute left-3 top-3" />
+              </div>
             </div>
+
             <div>
-              <label className="text-xs text-gray-400 block mb-1">E-mail</label>
-              <input
-                type="email"
-                value={customEmail}
-                onChange={(e) => setCustomEmail(e.target.value)}
-                placeholder="np. michal@gmail.com"
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg p-2 text-sm text-white focus:outline-none focus:border-brand-500"
-              />
+              <label className="text-xs font-semibold text-gray-300 block mb-1">
+                {lang === "pl" ? "Adres E-mail" : "Email Address"}
+              </label>
+              <div className="relative">
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    setError(null);
+                  }}
+                  placeholder="twoj.email@example.com"
+                  required
+                  className="w-full bg-gray-800 border border-gray-700 rounded-xl p-2.5 pl-9 text-sm text-white focus:outline-none focus:border-brand-500 transition"
+                />
+                <Mail className="w-4 h-4 text-gray-500 absolute left-3 top-3" />
+              </div>
             </div>
+
+            {error && (
+              <p className="text-xs font-medium text-rose-400 bg-rose-950/30 p-2.5 rounded-lg border border-rose-500/20">
+                {error}
+              </p>
+            )}
 
             <button
               type="submit"
-              className="w-full py-2 bg-gray-800 hover:bg-gray-700 text-white font-semibold rounded-lg text-xs transition border border-gray-700"
+              className="w-full py-2.5 bg-brand-600 hover:bg-brand-500 text-white font-bold rounded-xl text-sm transition shadow-lg shadow-brand-900/40 flex items-center justify-center gap-2"
             >
-              {lang === "pl" ? "Zaloguj do nowej półki" : "Login to new shelf"}
+              <span>{lang === "pl" ? "Wejdź do mojej biblioteczki" : "Access My Bookshelf"}</span>
+              <ArrowRight className="w-4 h-4" />
             </button>
           </form>
         </div>

@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { Book, Series, FormatFilter, Language, UserAccount } from "@/types";
 import { translations } from "@/data/mockData";
 import { X, Check, ShoppingBag, BookOpen } from "lucide-react";
+import { BookCover } from "./BookCover";
 
 interface BookModalProps {
   book: Book;
@@ -50,12 +51,14 @@ export const BookModal: React.FC<BookModalProps> = ({
         {/* Modal Header */}
         <div className="p-5 sm:p-6 border-b border-gray-800 flex items-start justify-between bg-gray-950/70">
           <div className="flex gap-4">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={book.cover}
-              alt={book.title}
-              className="w-20 h-28 object-cover rounded-lg shadow-md border border-gray-700"
-            />
+            <div className="w-20 h-28 shrink-0 overflow-hidden rounded-lg shadow-md border border-gray-700 bg-gray-950">
+              <BookCover
+                src={book.cover}
+                isbn={book.editions[0]?.isbn}
+                title={book.title}
+                className="w-full h-full object-cover"
+              />
+            </div>
             <div>
               <span className="text-xs font-semibold px-2 py-0.5 rounded bg-brand-500/20 text-brand-400">
                 {series.seriesName} #{book.volume}
