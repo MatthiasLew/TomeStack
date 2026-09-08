@@ -1,9 +1,9 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { Series, Book, FormatFilter, StatusFilter, Language, UserAccount } from "@/types";
 import { translations } from "@/data/mockData";
-import { Check, Plus } from "lucide-react";
+import { Check, Plus, ChevronDown, ChevronUp } from "lucide-react";
 import { BookCover } from "./BookCover";
 
 interface SeriesCardProps {
@@ -15,6 +15,8 @@ interface SeriesCardProps {
   onOpenBookModal: (book: Book, series: Series) => void;
   onOpenAuthorModal: (authorName: string) => void;
   onToggleOwned: (bookId: string, defaultEditionId: string) => void;
+  isCollapsed?: boolean;
+  onToggleCollapse?: () => void;
 }
 
 export const SeriesCard: React.FC<SeriesCardProps> = ({
@@ -26,8 +28,20 @@ export const SeriesCard: React.FC<SeriesCardProps> = ({
   onOpenBookModal,
   onOpenAuthorModal,
   onToggleOwned,
+  isCollapsed,
+  onToggleCollapse,
 }) => {
   const t = translations[lang];
+
+  const [localCollapsed, setLocalCollapsed] = useState(false);
+  const collapsed = isCollapsed !== undefined ? isCollapsed : localCollapsed;
+  const handleToggle = () => {
+    if (onToggleCollapse) {
+      onToggleCollapse();
+    } else {
+      setLocalCollapsed((prev) => !prev);
+    }
+  };
 
   // Calculate series ownership stats
   const totalBooks = series.books.length;
@@ -58,13 +72,19 @@ export const SeriesCard: React.FC<SeriesCardProps> = ({
   }
 
   return (
-    <div className="card-glass rounded-2xl p-6 border border-gray-800/80 shadow-xl space-y-5">
+    <div className="card-glass rounded-2xl p-5 sm:p-6 border border-gray-800/80 shadow-xl space-y-4 transition-all">
       {/* Series Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-800/70 pb-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <h3 className="text-xl font-bold font-serif text-white tracking-wide">
-              {series.seriesName}
+        <div className="flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <h3
+              onClick={handleToggle}
+              className="text-xl font-bold font-serif text-white tracking-wide cursor-pointer hover:text-brand-300 transition flex items-center gap-2 group select-none"
+            >
+              <span>{series.seriesName}</span>
+              <span className="text-gray-500 group-hover:text-brand-400 transition text-sm">
+                {collapsed ? <ChevronDown className="w-4 h-4 inline" /> : <ChevronUp className="w-4 h-4 inline" />}
+              </span>
             </h3>
             {isComplete ? (
               <span className="px-2.5 py-0.5 rounded-full text-xs font-extrabold bg-amber-500/20 text-amber-300 border border-amber-500/40">
@@ -79,7 +99,10 @@ export const SeriesCard: React.FC<SeriesCardProps> = ({
           <p className="text-xs text-gray-400 mt-1">
             {t.author}{" "}
             <button
-              onClick={() => onOpenAuthorModal(series.author)}
+              onClick={(e) => {
+                e.stopPropagation();
+                onOpenAuthorModal(series.author);
+              }}
               className="text-brand-400 font-bold hover:underline"
             >
               {series.author}
@@ -87,27 +110,76 @@ export const SeriesCard: React.FC<SeriesCardProps> = ({
           </p>
         </div>
 
-        {/* Progress bar info */}
-        <div className="sm:text-right min-w-[140px]">
-          <div className="flex items-center justify-between sm:justify-end gap-2 text-xs font-semibold text-gray-300 mb-1">
-            <span className="text-gray-400 font-normal">{t.progress}</span>
-            <span className={isComplete ? "text-emerald-400" : "text-amber-400"}>
-              {ownedCount}/{totalBooks} ({percent}%)
+        {/* Progress bar info & Toggle button */}
+        <div className="flex items-center gap-3 sm:justify-end">
+          <div className="sm:text-right min-w-[130px]">
+            <div className="flex items-center justify-between sm:justify-end gap-2 text-xs font-semibold text-gray-300 mb-1">
+              <span className="text-gray-400 font-normal">{t.progress}</span>
+              <span className={isComplete ? "text-emerald-400" : "text-amber-400"}>
+                {ownedCount}/{totalBooks} ({percent}%)
+              </span>
+            </div>
+            <div className="w-full sm:w-36 bg-gray-800 rounded-full h-2 overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all duration-500 ${
+                  isComplete ? "bg-emerald-500" : "bg-gradient-to-r from-amber-500 to-brand-500"
+                }`}
+                style={{ width: `${percent}%` }}
+              />
+            </div>
+          </div>
+
+          {/* Collapse/Expand Toggle Button */}
+          <button
+            onClick={handleToggle}
+            className="p-2 rounded-xl bg-gray-800/80 hover:bg-gray-700 text-gray-300 hover:text-white border border-gray-700/60 transition flex items-center gap-1.5 text-xs font-semibold shrink-0 cursor-pointer shadow-sm"
+            title={collapsed ? (t.expandSeries || "Rozwiń") : (t.collapseSeries || "Zwiń")}
+          >
+            <span className="hidden sm:inline">
+              {collapsed ? (t.expandSeries || "Rozwiń") : (t.collapseSeries || "Zwiń")}
             </span>
-          </div>
-          <div className="w-full sm:w-40 bg-gray-800 rounded-full h-2 overflow-hidden">
-            <div
-              className={`h-full rounded-full transition-all duration-500 ${
-                isComplete ? "bg-emerald-500" : "bg-gradient-to-r from-amber-500 to-brand-500"
-              }`}
-              style={{ width: `${percent}%` }}
-            />
-          </div>
+            {collapsed ? <ChevronDown className="w-4 h-4 text-brand-400" /> : <ChevronUp className="w-4 h-4 text-gray-400" />}
+          </button>
         </div>
       </div>
 
-      {/* Books Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-4 gap-4">
+      {/* Body: Collapsed preview vs Expanded full book grid */}
+      {collapsed ? (
+        <div
+          onClick={handleToggle}
+          className="bg-gray-950/40 hover:bg-gray-900/50 border border-gray-800/70 hover:border-gray-700/80 rounded-xl p-3 flex flex-wrap items-center justify-between gap-3 cursor-pointer transition shadow-inner"
+        >
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-bold uppercase tracking-wider text-gray-400">
+              {lang === "pl" ? "Tomy:" : "Volumes:"}
+            </span>
+            <div className="flex flex-wrap items-center gap-1.5">
+              {series.books.map((b) => {
+                const isOwned = Boolean(currentUser?.ownedBooks && currentUser.ownedBooks[b.id]);
+                return (
+                  <span
+                    key={b.id}
+                    className={`px-2 py-0.5 rounded text-[11px] font-bold border transition ${
+                      isOwned
+                        ? "bg-emerald-950/80 border-emerald-500/40 text-emerald-300"
+                        : "bg-gray-900 border-gray-800 text-gray-500"
+                    }`}
+                    title={`#${b.volume}: ${b.title} (${isOwned ? (lang === "pl" ? "Posiadasz" : "Owned") : (lang === "pl" ? "Brak" : "Missing")})`}
+                  >
+                    #{b.volume} {isOwned ? "✓" : "—"}
+                  </span>
+                );
+              })}
+            </div>
+          </div>
+          <span className="text-xs font-semibold text-brand-400 hover:text-brand-300 flex items-center gap-1">
+            <span>{t.showAllVolumes || (lang === "pl" ? "Rozwiń tomy cyklu" : "Show volumes")} ({visibleBooks.length})</span>
+            <ChevronDown className="w-3.5 h-3.5" />
+          </span>
+        </div>
+      ) : (
+        /* Books Grid */
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-4 gap-4 pt-1">
         {visibleBooks.map((book) => {
           const isOwned = Boolean(currentUser?.ownedBooks && currentUser.ownedBooks[book.id]);
           const selectedEditionId = currentUser?.ownedBooks?.[book.id];
@@ -193,7 +265,8 @@ export const SeriesCard: React.FC<SeriesCardProps> = ({
             </div>
           );
         })}
-      </div>
+        </div>
+      )}
     </div>
   );
 };

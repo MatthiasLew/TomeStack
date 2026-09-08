@@ -15,6 +15,7 @@ import {
   authorsDatabase,
   initialSeriesDatabase,
 } from "@/data/mockData";
+import { FolderMinus, FolderPlus } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { UserBanner, GuestAlertBanner } from "@/components/UserBanner";
 import { StatsCards } from "@/components/StatsCards";
@@ -81,6 +82,29 @@ export default function Home() {
   const [isAddBookOpen, setIsAddBookOpen] = useState(false);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
+
+  // Collapsed series state for large collections
+  const [collapsedSeriesIds, setCollapsedSeriesIds] = useState<Set<string>>(new Set());
+
+  const handleToggleSeriesCollapse = (seriesId: string) => {
+    setCollapsedSeriesIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(seriesId)) {
+        next.delete(seriesId);
+      } else {
+        next.add(seriesId);
+      }
+      return next;
+    });
+  };
+
+  const handleCollapseAll = (seriesListToCollapse: Series[]) => {
+    setCollapsedSeriesIds(new Set(seriesListToCollapse.map((s) => s.seriesId)));
+  };
+
+  const handleExpandAll = () => {
+    setCollapsedSeriesIds(new Set());
+  };
 
   // Calculation of overall statistics
   const stats = useMemo(() => {
@@ -310,7 +334,44 @@ export default function Home() {
 
         {/* Content based on Active Tab */}
         {activeTab === "series" && (
-          <div className="space-y-6">
+          <div className="space-y-4">
+            {filteredSeries.length > 0 && (
+              <div className="flex flex-wrap items-center justify-between gap-3 px-1 py-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-semibold text-gray-300">
+                    {lang === "pl" ? "Cykle i sagi" : "Sagas & Series"}
+                  </span>
+                  <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-gray-800 text-gray-300 border border-gray-700">
+                    {filteredSeries.length}
+                  </span>
+                  {collapsedSeriesIds.size > 0 && (
+                    <span className="text-xs text-brand-400 font-medium">
+                      ({collapsedSeriesIds.size} {lang === "pl" ? "zwiniętych" : "collapsed"})
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handleCollapseAll(filteredSeries)}
+                    className="px-2.5 py-1.5 rounded-lg text-xs font-medium bg-gray-800/80 hover:bg-gray-700 text-gray-300 hover:text-white border border-gray-700/60 transition flex items-center gap-1.5 shadow-sm"
+                    title={lang === "pl" ? "Zwiń wszystkie cykle" : "Collapse all series"}
+                  >
+                    <FolderMinus className="w-3.5 h-3.5 text-brand-400" />
+                    <span>{lang === "pl" ? "Zwiń wszystkie" : "Collapse all"}</span>
+                  </button>
+                  <button
+                    onClick={handleExpandAll}
+                    className="px-2.5 py-1.5 rounded-lg text-xs font-medium bg-gray-800/80 hover:bg-gray-700 text-gray-300 hover:text-white border border-gray-700/60 transition flex items-center gap-1.5 shadow-sm"
+                    title={lang === "pl" ? "Rozwiń wszystkie cykle" : "Expand all series"}
+                  >
+                    <FolderPlus className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>{lang === "pl" ? "Rozwiń wszystkie" : "Expand all"}</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
             {filteredSeries.length === 0 ? (
               <div className="card-glass rounded-2xl p-12 text-center text-gray-400">
                 <p>{lang === "pl" ? "Brak cykli pasujących do kryteriów." : "No series matching filters."}</p>
@@ -324,6 +385,8 @@ export default function Home() {
                   formatFilter={formatFilter}
                   statusFilter={statusFilter}
                   lang={lang}
+                  isCollapsed={collapsedSeriesIds.has(series.seriesId)}
+                  onToggleCollapse={() => handleToggleSeriesCollapse(series.seriesId)}
                   onOpenBookModal={(book, s) =>
                     setActiveBookModal({ book, series: s })
                   }
@@ -349,7 +412,44 @@ export default function Home() {
         )}
 
         {activeTab === "all" && (
-          <div className="space-y-6">
+          <div className="space-y-4">
+            {filteredSeries.length > 0 && (
+              <div className="flex flex-wrap items-center justify-between gap-3 px-1 py-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-semibold text-gray-300">
+                    {lang === "pl" ? "Wszystkie tomy wg cykli" : "All Volumes by Series"}
+                  </span>
+                  <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-gray-800 text-gray-300 border border-gray-700">
+                    {filteredSeries.length}
+                  </span>
+                  {collapsedSeriesIds.size > 0 && (
+                    <span className="text-xs text-brand-400 font-medium">
+                      ({collapsedSeriesIds.size} {lang === "pl" ? "zwiniętych" : "collapsed"})
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handleCollapseAll(filteredSeries)}
+                    className="px-2.5 py-1.5 rounded-lg text-xs font-medium bg-gray-800/80 hover:bg-gray-700 text-gray-300 hover:text-white border border-gray-700/60 transition flex items-center gap-1.5 shadow-sm"
+                    title={lang === "pl" ? "Zwiń wszystkie cykle" : "Collapse all series"}
+                  >
+                    <FolderMinus className="w-3.5 h-3.5 text-brand-400" />
+                    <span>{lang === "pl" ? "Zwiń wszystkie" : "Collapse all"}</span>
+                  </button>
+                  <button
+                    onClick={handleExpandAll}
+                    className="px-2.5 py-1.5 rounded-lg text-xs font-medium bg-gray-800/80 hover:bg-gray-700 text-gray-300 hover:text-white border border-gray-700/60 transition flex items-center gap-1.5 shadow-sm"
+                    title={lang === "pl" ? "Rozwiń wszystkie cykle" : "Expand all series"}
+                  >
+                    <FolderPlus className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>{lang === "pl" ? "Rozwiń wszystkie" : "Expand all"}</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
             {filteredSeries.map((series) => (
               <SeriesCard
                 key={series.seriesId}
@@ -358,6 +458,8 @@ export default function Home() {
                 formatFilter="all"
                 statusFilter="all"
                 lang={lang}
+                isCollapsed={collapsedSeriesIds.has(series.seriesId)}
+                onToggleCollapse={() => handleToggleSeriesCollapse(series.seriesId)}
                 onOpenBookModal={(book, s) =>
                   setActiveBookModal({ book, series: s })
                 }
