@@ -230,6 +230,7 @@ export const BookModal: React.FC<BookModalProps> = ({
           </div>
 
           {/* Section 1: Price Comparison */}
+          {book.prices.length > 0 && <p className="text-xs text-amber-300">{lang === 'pl' ? 'Ceny demonstracyjne — sprawdź aktualną ofertę w sklepie.' : 'Demo prices — check current offers at the store.'}</p>}
           <div className="bg-gray-950/70 border border-amber-500/30 rounded-xl p-4 sm:p-5 space-y-3 shadow-lg">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 border-b border-gray-800/80 pb-2.5">
               <div className="flex items-center gap-2">
@@ -313,8 +314,8 @@ export const BookModal: React.FC<BookModalProps> = ({
                   >
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-bold text-white">{ed.publisher}</span>
-                        <span className="text-xs text-gray-400">({ed.year})</span>
+                        <span className="text-sm font-bold text-white">{ed.publisher || "—"}</span>
+                        <span className="text-xs text-gray-400">({ed.year || "—"})</span>
                         <span className="text-[11px] px-2 py-0.5 rounded bg-gray-800 text-gray-300 font-medium">
                           {ed.format}
                         </span>
@@ -325,7 +326,7 @@ export const BookModal: React.FC<BookModalProps> = ({
                         )}
                       </div>
                       <p className="text-xs text-gray-400">
-                        ISBN: <span className="font-mono text-gray-300">{ed.isbn}</span>
+                        ISBN: <span className="font-mono text-gray-300">{ed.isbn || "—"}</span>
                         {ed.coverDesc && ` • ${ed.coverDesc}`}
                       </p>
                     </div>

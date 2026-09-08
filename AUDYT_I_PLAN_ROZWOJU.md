@@ -1,5 +1,7 @@
 # TomeStack — audyt techniczny i plan rozwoju
 
+> Raport historyczny dla wskazanego commitu. Aktualne poprawki i ograniczenia: [AUDIT_FIXES.md](AUDIT_FIXES.md).
+
 **Data audytu:** 8 września 2026
 
 **Audytowany commit bazowy:** `079773d`

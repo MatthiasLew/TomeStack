@@ -29,6 +29,8 @@ interface AuthorSearchModalProps {
     isbn?: string;
     cover?: string;
     readingStatus?: ReadingStatus;
+    publisher?: string;
+    publicationYear?: number;
   }) => void;
 }
 
@@ -55,6 +57,8 @@ export const AuthorSearchModal: React.FC<AuthorSearchModalProps> = ({
   const [books, setBooks] = useState<AuthorBookResult[]>([]);
   const [searchedAuthor, setSearchedAuthor] = useState("");
   const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
+  const requestId = React.useRef(0);
+  React.useEffect(() => () => { requestId.current++; }, []);
   const [error, setError] = useState<string | null>(null);
 
   React.useEffect(() => {
@@ -69,6 +73,8 @@ export const AuthorSearchModal: React.FC<AuthorSearchModalProps> = ({
     const authorName = authorToSearch.trim();
     if (!authorName) return;
 
+    const id = ++requestId.current;
+    setBooks([]);
     setLoading(true);
     setError(null);
     setSearchedAuthor(authorName);
@@ -79,6 +85,7 @@ export const AuthorSearchModal: React.FC<AuthorSearchModalProps> = ({
         throw new Error(lang === "pl" ? "Błąd pobierania danych autora." : "Error fetching author data.");
       }
       const json = await res.json();
+      if (id !== requestId.current) return;
       setBooks(json.data || []);
       if ((json.data || []).length === 0) {
         setError(
@@ -88,11 +95,12 @@ export const AuthorSearchModal: React.FC<AuthorSearchModalProps> = ({
         );
       }
     } catch (err) {
+      if (id !== requestId.current) return;
       setError(
         err instanceof Error ? err.message : (lang === "pl" ? "Nie udało się połączyć z API." : "API connection failed.")
       );
     } finally {
-      setLoading(false);
+      if (id === requestId.current) setLoading(false);
     }
   };
 
@@ -128,6 +136,8 @@ export const AuthorSearchModal: React.FC<AuthorSearchModalProps> = ({
       formatType: b.formatType,
       isbn: b.isbn,
       cover: b.coverUrl,
+      publisher: b.publisher,
+      publicationYear: b.publicationYear,
       readingStatus: status,
     });
     setAddedIds((prev) => new Set(prev).add(key));
@@ -140,6 +150,7 @@ export const AuthorSearchModal: React.FC<AuthorSearchModalProps> = ({
       const cleanTitle = cleanDisplayTitle(b.title);
       const seriesName = detectSeriesName(cleanTitle, author);
       const key = `${cleanTitle}-${b.isbn || "no-isbn"}`;
+      if (nextSet.has(key)) return;
       nextSet.add(key);
       onAddBookToShelf({
         title: cleanTitle,
@@ -148,6 +159,8 @@ export const AuthorSearchModal: React.FC<AuthorSearchModalProps> = ({
         formatType: b.formatType,
         isbn: b.isbn,
         cover: b.coverUrl,
+      publisher: b.publisher,
+      publicationYear: b.publicationYear,
         readingStatus: "unread",
       });
     });
@@ -172,8 +185,8 @@ export const AuthorSearchModal: React.FC<AuthorSearchModalProps> = ({
               </h2>
               <p className="text-xs text-gray-400">
                 {lang === "pl"
-                  ? "API wczyta całą bibliografię autora z prawdziwymi okładkami z BN i Open Library"
-                  : "API loads full author bibliography with real covers without barcodes"}
+                  ? "Wyszukaj dostępne książki autora. Wyniki mogą nie obejmować całej bibliografii."
+                  : "Search available author books. Results may not include the full bibliography."}
               </p>
             </div>
           </div>

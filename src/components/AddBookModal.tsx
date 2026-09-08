@@ -6,6 +6,7 @@ import { X, BookOpen, Search, Loader2, Camera } from "lucide-react";
 import { BarcodeScannerModal } from "./BarcodeScannerModal";
 
 interface AddBookModalProps {
+  initialIsbn?: string;
   lang: Language;
   onClose: () => void;
   onAddBook: (bookData: {
@@ -14,11 +15,15 @@ interface AddBookModalProps {
     series: string;
     formatType: BindingFormat;
     isbn?: string;
+    cover?: string;
+    publisher?: string;
+    publicationYear?: number;
   }) => void;
 }
 
 export const AddBookModal: React.FC<AddBookModalProps> = ({
   lang,
+  initialIsbn = "",
   onClose,
   onAddBook,
 }) => {
@@ -26,7 +31,8 @@ export const AddBookModal: React.FC<AddBookModalProps> = ({
   const [author, setAuthor] = useState("");
   const [series, setSeries] = useState("");
   const [formatType, setFormatType] = useState<BindingFormat>("hardcover");
-  const [isbn, setIsbn] = useState("");
+  const [isbn, setIsbn] = useState(initialIsbn);
+  const [metadata, setMetadata] = useState<{ cover?: string; publisher?: string; publicationYear?: number }>({});
   const [showScanner, setShowScanner] = useState(false);
 
   // Multi-Provider Book Fetch State
@@ -53,6 +59,7 @@ export const AddBookModal: React.FC<AddBookModalProps> = ({
 
         if (res.ok && json.data) {
           const b = json.data;
+          setMetadata({ cover: b.coverUrl, publisher: b.publisher, publicationYear: b.publicationYear });
           setTitle(b.title || title);
           setAuthor(b.author || author);
           setFormatType(b.formatType || formatType);
@@ -88,6 +95,7 @@ export const AddBookModal: React.FC<AddBookModalProps> = ({
 
         if (res.ok && json.data && json.data.length > 0) {
           const b = json.data[0];
+          setMetadata({ cover: b.coverUrl, publisher: b.publisher, publicationYear: b.publicationYear });
           setTitle(b.title || title);
           setAuthor(b.author || author);
           if (b.isbn) setIsbn(b.isbn);
@@ -129,8 +137,9 @@ export const AddBookModal: React.FC<AddBookModalProps> = ({
     if (!title.trim() || !author.trim()) return;
 
     onAddBook({
-      title,
-      author,
+      ...metadata,
+      title: title.trim(),
+      author: author.trim(),
       series: series || (lang === "pl" ? "Książki samodzielne" : "Standalone"),
       formatType,
       isbn,
@@ -140,7 +149,7 @@ export const AddBookModal: React.FC<AddBookModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-gray-900 border border-gray-700 w-full max-w-md rounded-2xl overflow-hidden shadow-2xl p-6">
+      <div className="bg-gray-900 border border-gray-700 w-full max-w-md rounded-2xl overflow-y-auto max-h-[92vh] shadow-2xl p-6">
         <div className="flex items-center justify-between pb-3 border-b border-gray-800">
           <div className="flex items-center gap-2">
             <BookOpen className="w-5 h-5 text-brand-400" />
@@ -210,7 +219,7 @@ export const AddBookModal: React.FC<AddBookModalProps> = ({
               <input
                 type="text"
                 value={isbn}
-                onChange={(e) => setIsbn(e.target.value)}
+                onChange={(e) => { setIsbn(e.target.value); setMetadata({}); }}
                 placeholder="np. 9788375780635"
                 className="w-full bg-gray-800 border border-gray-700 rounded-lg p-2.5 pr-24 text-sm text-white focus:outline-none focus:border-brand-500 font-mono"
               />
@@ -313,6 +322,7 @@ export const AddBookModal: React.FC<AddBookModalProps> = ({
                   .then((json) => {
                     if (json && json.data) {
                       const b = json.data;
+          setMetadata({ cover: b.coverUrl, publisher: b.publisher, publicationYear: b.publicationYear });
                       setTitle(b.title || "");
                       setAuthor(b.author || "");
                       setFormatType(b.formatType || "hardcover");

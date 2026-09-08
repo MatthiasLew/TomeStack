@@ -3,9 +3,9 @@ import assert from "node:assert/strict";
 import { parsePriceNumber, generateStorePurchaseUrl, calculateSeriesBasket } from "../src/lib/pricing/priceEngine";
 
 test("parsePriceNumber accurately parses various Polish currency formats", () => {
-  assert.equal(parsePriceNumber("44,99 z�"), 44.99);
+  assert.equal(parsePriceNumber("44,99 zł"), 44.99);
   assert.equal(parsePriceNumber("39.50 PLN"), 39.5);
-  assert.equal(parsePriceNumber("52 z�"), 52);
+  assert.equal(parsePriceNumber("52 zł"), 52);
   assert.equal(parsePriceNumber(""), 0);
   assert.equal(parsePriceNumber("brak"), 0);
 });
@@ -15,7 +15,7 @@ test("generateStorePurchaseUrl creates correct bookstore links", () => {
   assert.match(urlEmpik, /empik\.com/);
   assert.match(urlEmpik, /9788328716162/);
 
-  const urlTania = generateStorePurchaseUrl("taniaksiazka", "Folwark zwierz�cy");
+  const urlTania = generateStorePurchaseUrl("taniaksiazka", "Folwark zwierzłcy");
   assert.match(urlTania, /taniaksiazka\.pl/);
 });
 
@@ -27,8 +27,8 @@ test("calculateSeriesBasket computes single-store vs cheapest optimization", () 
       volume: 1,
       formatType: "hardcover" as const,
       prices: [
-        { store: "Empik", formatType: "hardcover" as const, format: "Twarda", price: "30,00 z�", shipping: "0 z�", isBest: true, url: "" },
-        { store: "TaniaKsi��ka", formatType: "hardcover" as const, format: "Twarda", price: "35,00 z�", shipping: "9 z�", isBest: false, url: "" },
+        { store: "Empik", formatType: "hardcover" as const, format: "Twarda", price: "30,00 zł", shipping: "0 zł", isBest: true, url: "" },
+        { store: "TaniaKsiążka", formatType: "hardcover" as const, format: "Twarda", price: "35,00 zł", shipping: "9 zł", isBest: false, url: "" },
       ],
     },
     {
@@ -37,8 +37,8 @@ test("calculateSeriesBasket computes single-store vs cheapest optimization", () 
       volume: 2,
       formatType: "hardcover" as const,
       prices: [
-        { store: "Empik", formatType: "hardcover" as const, format: "Twarda", price: "40,00 z�", shipping: "0 z�", isBest: false, url: "" },
-        { store: "TaniaKsi��ka", formatType: "hardcover" as const, format: "Twarda", price: "25,00 z�", shipping: "9 z�", isBest: true, url: "" },
+        { store: "Empik", formatType: "hardcover" as const, format: "Twarda", price: "40,00 zł", shipping: "0 zł", isBest: false, url: "" },
+        { store: "TaniaKsiążka", formatType: "hardcover" as const, format: "Twarda", price: "25,00 zł", shipping: "9 zł", isBest: true, url: "" },
       ],
     },
   ];

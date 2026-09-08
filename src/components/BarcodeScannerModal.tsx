@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from "html5-qrcode";
 import { Camera, X, RefreshCw, AlertCircle, CheckCircle2, Zap } from "lucide-react";
+import { isValidIsbn, normalizeIsbn } from "@/lib/api/validation";
 import { Language } from "@/types";
 
 interface BarcodeScannerModalProps {
@@ -23,130 +24,83 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
   const [selectedCameraId, setSelectedCameraId] = useState<string | null>(null);
 
   const scannerRef = useRef<Html5Qrcode | null>(null);
+  const callbacks = useRef({ onDetected, onClose });
+  callbacks.current = { onDetected, onClose };
+  const generation = useRef(0);
+  const queue = useRef<Promise<void>>(Promise.resolve());
+  const detected = useRef(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const readerElementId = "tome-barcode-reader";
 
-  const handleScanSuccess = useCallback((decodedText: string) => {
-    // Sanitize alphanumeric ISBN
-    const clean = decodedText.replace(/[^0-9X]/gi, "");
-    if (clean.length >= 10) {
-      setDetectedIsbn(clean);
-      // Play brief success sound / feedback if available
-      try {
-        if ("vibrate" in navigator) {
-          navigator.vibrate(100);
-        }
-      } catch {
-        // vibration not supported
-      }
-
-      // Stop scanner and notify parent
-      if (scannerRef.current && scannerRef.current.isScanning) {
-        scannerRef.current.stop().catch(() => {});
-      }
-      setTimeout(() => {
-        onDetected(clean);
-        onClose();
-      }, 700);
-    }
-  }, [onDetected, onClose]);
-
-  const startScanning = useCallback(async (cameraId?: string) => {
+  const startScanning = useCallback((cameraId?: string) => {
+    const version = generation.current;
     setCameraError(null);
     setDetectedIsbn(null);
-
-    try {
-      if (!scannerRef.current) {
-        scannerRef.current = new Html5Qrcode(readerElementId, {
-          formatsToSupport: [
-            Html5QrcodeSupportedFormats.EAN_13,
-            Html5QrcodeSupportedFormats.EAN_8,
-            Html5QrcodeSupportedFormats.CODE_128,
-            Html5QrcodeSupportedFormats.UPC_A,
-          ],
-          verbose: false,
-        });
-      }
-
-      // If scanner is already active, stop before restarting
-      if (scannerRef.current.isScanning) {
-        await scannerRef.current.stop();
-      }
-
-      const cameraConfig = cameraId
-        ? { deviceId: { exact: cameraId } }
-        : { facingMode: "environment" };
-
-      await scannerRef.current.start(
-        cameraConfig,
-        {
-          fps: 15,
-          qrbox: { width: 280, height: 160 },
-          aspectRatio: 1.333333,
-        },
-        handleScanSuccess,
-        () => {
-          // Frame scanned without barcode match, continue silently
-        }
-      );
-
-      setIsScanning(true);
-    } catch (err: unknown) {
-      console.error("Camera startup error:", err);
-      const msg =
-        err instanceof Error
-          ? err.message
-          : "Nie udało się uruchomić kamery. Upewnij się, że przyznano uprawnienia.";
-      setCameraError(msg);
-      setIsScanning(false);
-    }
-  }, [handleScanSuccess]);
-
-  // Enumerate cameras and auto-start
-  useEffect(() => {
-    let isMounted = true;
-
-    Html5Qrcode.getCameras()
-      .then((devices) => {
-        if (!isMounted) return;
-        if (devices && devices.length > 0) {
-          setCameras(devices);
-          // Prefer back camera (environment) if available
-          const backCam = devices.find((d) =>
-            d.label.toLowerCase().includes("back") ||
-            d.label.toLowerCase().includes("tył") ||
-            d.label.toLowerCase().includes("environment")
-          );
-          const chosen = backCam ? backCam.id : devices[0].id;
-          setSelectedCameraId(chosen);
-          startScanning(chosen);
-        } else {
-          startScanning();
-        }
-      })
-      .catch(() => {
-        if (!isMounted) return;
-        // Fallback to start with facingMode environment
-        startScanning();
+    detected.current = false;
+    queue.current = queue.current.catch(() => {}).then(async () => {
+      if (version !== generation.current) return;
+      const scanner = scannerRef.current || new Html5Qrcode(readerElementId, {
+        formatsToSupport: [Html5QrcodeSupportedFormats.EAN_13, Html5QrcodeSupportedFormats.CODE_128], verbose: false,
       });
-
-    return () => {
-      isMounted = false;
-      if (scannerRef.current) {
-        if (scannerRef.current.isScanning) {
-          scannerRef.current.stop().catch(() => {});
+      scannerRef.current = scanner;
+      if (scanner.isScanning) await scanner.stop();
+      if (version !== generation.current) return;
+      try {
+        await scanner.start(cameraId ? { deviceId: { exact: cameraId } } : { facingMode: "environment" }, {
+          fps: 15,
+          qrbox: (width, height) => ({ width: Math.min(280, Math.floor(width * 0.9)), height: Math.min(160, Math.floor(height * 0.7)) }),
+        }, text => {
+          if (version !== generation.current || detected.current || !isValidIsbn(text)) return;
+          detected.current = true;
+          const isbn = normalizeIsbn(text);
+          setDetectedIsbn(isbn);
+          setIsScanning(false);
+          queue.current = queue.current.then(async () => { if (scanner.isScanning) await scanner.stop(); }).catch(() => {});
+          timer.current = setTimeout(() => {
+            if (version !== generation.current) return;
+            callbacks.current.onDetected(isbn);
+            callbacks.current.onClose();
+          }, 700);
+        }, () => {});
+        if (version !== generation.current) {
+          if (scanner.isScanning) await scanner.stop();
+          return;
         }
-        try {
-          scannerRef.current.clear();
-        } catch {
-          // ignore clear error on unmount
-        }
+        setIsScanning(true);
+      } catch (error) {
+        if (version !== generation.current) return;
+        setCameraError(error instanceof Error ? error.message : String(error));
+        setIsScanning(false);
       }
+    });
+  }, []);
+
+  useEffect(() => {
+    const version = ++generation.current;
+    Html5Qrcode.getCameras().then(devices => {
+      if (version !== generation.current) return;
+      setCameras(devices);
+      const camera = devices.find(d => /back|tył|environment/i.test(d.label)) || devices[0];
+      setSelectedCameraId(camera?.id || null);
+      startScanning(camera?.id);
+    }).catch(() => { if (version === generation.current) startScanning(); });
+    return () => {
+      generation.current = version + 1;
+      if (timer.current) clearTimeout(timer.current);
+      queue.current = queue.current.catch(() => {}).then(async () => {
+        const scanner = scannerRef.current;
+        if (!scanner) return;
+        if (scanner.isScanning) await scanner.stop();
+        scanner.clear();
+        scannerRef.current = null;
+      }).catch(() => {});
     };
   }, [startScanning]);
 
-  const handleSwitchCamera = (newCamId: string) => {
-    setSelectedCameraId(newCamId);
-    startScanning(newCamId);
+  const handleSwitchCamera = (id: string) => {
+    if (detected.current) return;
+    setSelectedCameraId(id);
+    startScanning(id);
   };
 
   return (
@@ -248,8 +202,8 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
         <div className="px-6 py-4 border-t border-gray-800 bg-gray-900/60 flex items-center justify-between text-xs text-gray-400">
           <span>
             {lang === "pl"
-              ? "Obsługuje formaty EAN-13, EAN-8, UPC, Code-128"
-              : "Supports EAN-13, EAN-8, UPC, Code-128"}
+              ? "Obsługuje ISBN w formatach EAN-13 i Code-128"
+              : "Supports ISBN in EAN-13 and Code-128"}
           </span>
           <button
             onClick={onClose}

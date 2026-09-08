@@ -11,7 +11,7 @@ export interface UnifiedBookMetadata {
   coverUrl?: string;
   description?: string;
   pageCount?: number;
-  source: "bn" | "openlibrary" | "googlebooks" | "composite";
+  source: "bn" | "openlibrary" | "googlebooks" | "composite" | "curated";
 }
 
 interface OpenLibraryBook {
@@ -95,7 +95,7 @@ export function normalizeBindingFormat(rawFormat?: string): BindingFormat {
  */
 export function extractYear(dateStr?: string | number): number | undefined {
   if (!dateStr) return undefined;
-  const match = String(dateStr).match(/\b(19\d{2}|20\d{2})\b/);
+  const match = String(dateStr).match(/\b([12]\d{3})\b/);
   return match ? parseInt(match[0], 10) : undefined;
 }
 
@@ -125,6 +125,7 @@ export async function fetchOpenLibraryByIsbn(isbn: string): Promise<UnifiedBookM
         try {
           const authRes = await fetch(`https://openlibrary.org${firstAuthorRef}.json`, {
             next: { revalidate: 86400 },
+            signal: AbortSignal.timeout(2000),
           });
           if (authRes.ok) {
             const authData = await authRes.json();
@@ -387,11 +388,11 @@ export async function unifiedSearchByQuery(
 
   const addCandidate = (b: UnifiedBookMetadata) => {
     const cleanedTitle = cleanDisplayTitle(b.title);
-    const workKey = canonicalizeBookTitle(cleanedTitle);
+    const workKey = `${b.author.toLowerCase().trim()}::${canonicalizeBookTitle(cleanedTitle)}`;
     if (!workKey || workKey.length < 2) return;
 
     if (seenWorkKeys.has(workKey)) {
-      const existing = results.find((r) => canonicalizeBookTitle(r.title) === workKey);
+      const existing = results.find((r) => `${r.author.toLowerCase().trim()}::${canonicalizeBookTitle(r.title)}` === workKey);
       if (existing) {
         if (!existing.coverUrl && b.coverUrl) existing.coverUrl = b.coverUrl;
         if (!existing.isbn && b.isbn) existing.isbn = b.isbn;
@@ -652,7 +653,7 @@ export function cleanDisplayTitle(rawTitle: string): string {
   let s = rawTitle.trim();
 
   // Strip authorship statements after /
-  const slashIdx = s.indexOf("/");
+  const slashIdx = s.search(/\s+\/\s+/);
   if (slashIdx !== -1) {
     s = s.substring(0, slashIdx).trim();
   }
@@ -669,9 +670,8 @@ export function cleanDisplayTitle(rawTitle: string): string {
   if (colonIdx !== -1) {
     const mainTitle = s.substring(0, colonIdx).trim();
     const subTitle = s.substring(colonIdx + 1).trim();
-    const genericGenrePattern = /^(powie[sś][cć]|opowiadani|esej|reporta[zż]|bajka|nowel|dramat|poemat|poezj|wiersz|wspomnien|autobiograf|biograf|felieton|utw[oó]r|antologi|wyb[oó]r|tom|cz[eę][sś][cć]|cz\.|wydani|przek[lł]ad|prze[lł]|proza)/i;
 
-    if (genericGenrePattern.test(subTitle) || (mainTitle.length >= 4 && subTitle.length <= 35)) {
+    if (/^(powie[sś][cć]|bajka polityczna|reporta[zż])\s*[.,;:]?$/i.test(subTitle)) {
       s = mainTitle;
     }
   }
@@ -707,8 +707,7 @@ export function canonicalizeBookTitle(rawTitle: string): string {
   // Normalize "1984" vs "rok 1984"
   s = s.replace(/\brok\s+1984\b/g, "1984");
 
-  // Remove parenthesized or bracketed qualifiers
-  s = s.replace(/\([^)]*\)/g, " ").replace(/\[[^\]]*\]/g, " ");
+  // Keep part/volume qualifiers: they may identify different works.
 
   // Polish diacritics folding
   s = s.replace(/[ąćęłńóśźż]/g, (c) => {
@@ -743,8 +742,10 @@ export async function unifiedSearchByAuthor(
         if (!workKey || seenWorkKeys.has(workKey)) continue;
         seenWorkKeys.add(workKey);
         results.push({
-          ...b,
           title: cleanDisplayTitle(b.title),
+          author: b.author,
+          formatType: "paperback", // Default selection, not verified edition metadata.
+          source: "curated",
         });
       }
       break;
@@ -764,15 +765,6 @@ export async function unifiedSearchByAuthor(
     const workKey = canonicalizeBookTitle(cleanedTitle);
     if (!workKey || workKey.length < 2) return;
 
-    // Filter out untranslated foreign titles if we already have curated or Polish entries
-    const isEnglishUntranslated = /^[a-z0-9\s,.'":;!?-]+$/i.test(b.title) &&
-      !/[ąćęłńóśźż]/i.test(b.title) &&
-      cleanedTitle === b.title &&
-      results.length > 0;
-    if (isEnglishUntranslated) {
-      return;
-    }
-
     // Filter out obvious metadata or biography artifacts about the author
     const authorSimplified = author.toLowerCase().replace(/[^a-z0-9]/g, "");
     if (workKey === authorSimplified || (workKey.includes(authorSimplified) && !workKey.includes("1984"))) {
@@ -783,6 +775,10 @@ export async function unifiedSearchByAuthor(
       // Enrich existing book if incoming has cover or missing metadata
       const existing = results.find((r) => canonicalizeBookTitle(r.title) === workKey);
       if (existing) {
+        if (existing.source === "curated") {
+          Object.assign(existing, { ...b, title: cleanedTitle });
+          return;
+        }
         if (!existing.coverUrl && b.coverUrl) {
           existing.coverUrl = b.coverUrl;
         }
