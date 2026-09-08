@@ -432,7 +432,6 @@ export async function unifiedSearchByQuery(
 }
 
 /**
-/**
  * Curated high-accuracy canonical bibliographies for popular authors to guarantee instant, zero-delay responses.
  */
 const CURATED_AUTHOR_BIBLIOGRAPHIES: Record<string, UnifiedBookMetadata[]> = {
