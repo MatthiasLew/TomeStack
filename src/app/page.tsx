@@ -27,6 +27,11 @@ import { AuthorModal } from "@/components/AuthorModal";
 import { AddBookModal } from "@/components/AddBookModal";
 import { AuthModal } from "@/components/AuthModal";
 import { BarcodeScannerModal } from "@/components/BarcodeScannerModal";
+import {
+  loadUserShelfFromCloud,
+  saveUserBookToCloud,
+  removeUserBookFromCloud,
+} from "@/lib/supabase/shelfSync";
 
 export default function Home() {
   const [lang, setLang] = useState<Language>("pl");
@@ -100,6 +105,19 @@ export default function Home() {
     }
   };
 
+  // Effect to load cloud shelf if Supabase is connected
+  const currentUserId = currentUser?.id;
+  React.useEffect(() => {
+    if (!currentUserId) return;
+    loadUserShelfFromCloud(currentUserId).then((cloudShelf) => {
+      if (cloudShelf && Object.keys(cloudShelf).length > 0) {
+        setCurrentUser((prev) =>
+          prev ? { ...prev, ownedBooks: { ...(prev.ownedBooks || {}), ...cloudShelf } } : null
+        );
+      }
+    });
+  }, [currentUserId]);
+
   const handleToggleOwned = (bookId: string, defaultEditionId: string) => {
     if (!currentUser) {
       setIsAuthOpen(true);
@@ -109,8 +127,10 @@ export default function Home() {
     const currentOwned = { ...(currentUser.ownedBooks || {}) };
     if (currentOwned[bookId]) {
       delete currentOwned[bookId];
+      removeUserBookFromCloud(currentUser.id, bookId);
     } else {
       currentOwned[bookId] = defaultEditionId;
+      saveUserBookToCloud(currentUser.id, bookId, defaultEditionId);
     }
 
     const updatedUser = { ...currentUser, ownedBooks: currentOwned };
@@ -126,6 +146,7 @@ export default function Home() {
 
     const currentOwned = { ...(currentUser.ownedBooks || {}) };
     currentOwned[bookId] = editionId;
+    saveUserBookToCloud(currentUser.id, bookId, editionId);
 
     const updatedUser = { ...currentUser, ownedBooks: currentOwned };
     setCurrentUser(updatedUser);
