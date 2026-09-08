@@ -27,22 +27,26 @@ export const AddBookModal: React.FC<AddBookModalProps> = ({
   const [formatType, setFormatType] = useState<BindingFormat>("hardcover");
   const [isbn, setIsbn] = useState("");
 
-  // BN Fetch State
-  const [isLoadingBn, setIsLoadingBn] = useState(false);
-  const [bnFeedback, setBnFeedback] = useState<string | null>(null);
+  // Multi-Provider Book Fetch State
+  const [isLoadingLookup, setIsLoadingLookup] = useState(false);
+  const [lookupFeedback, setLookupFeedback] = useState<string | null>(null);
 
-  const handleBnLookup = async () => {
+  const handleLookup = async () => {
     if (!isbn.trim() && !title.trim()) {
-      setBnFeedback("Wpisz najpierw numer ISBN lub tytuł.");
+      setLookupFeedback(
+        lang === "pl"
+          ? "Wpisz najpierw numer ISBN lub tytuł książki."
+          : "Please enter an ISBN or title first."
+      );
       return;
     }
 
-    setIsLoadingBn(true);
-    setBnFeedback(null);
+    setIsLoadingLookup(true);
+    setLookupFeedback(null);
 
     try {
       if (isbn.trim()) {
-        const res = await fetch(`/api/bn/lookup?isbn=${encodeURIComponent(isbn.trim())}`);
+        const res = await fetch(`/api/books/lookup?isbn=${encodeURIComponent(isbn.trim())}`);
         const json = await res.json();
 
         if (res.ok && json.data) {
@@ -50,13 +54,33 @@ export const AddBookModal: React.FC<AddBookModalProps> = ({
           setTitle(b.title || title);
           setAuthor(b.author || author);
           setFormatType(b.formatType || formatType);
-          setBnFeedback(`✓ Znaleziono w Bibliotece Narodowej: ${b.publisher} (${b.publicationYear})`);
+
+          const providerLabel =
+            b.source === "bn"
+              ? "Biblioteka Narodowa"
+              : b.source === "openlibrary"
+              ? "Open Library"
+              : b.source === "googlebooks"
+              ? "Google Books"
+              : "BN + Open Library / Google";
+
+          setLookupFeedback(
+            `✓ Pobrano (${providerLabel}): ${b.publisher || ""} ${
+              b.publicationYear ? `(${b.publicationYear})` : ""
+            }`
+          );
         } else {
-          setBnFeedback("Nie znaleziono pozycji w BN dla tego ISBN.");
+          setLookupFeedback(
+            lang === "pl"
+              ? "Nie znaleziono pozycji w bazach BN, Open Library ani Google Books."
+              : "Book not found in BN, Open Library, or Google Books."
+          );
         }
       } else if (title.trim()) {
         const res = await fetch(
-          `/api/bn/search?title=${encodeURIComponent(title.trim())}&author=${encodeURIComponent(author.trim())}`
+          `/api/books/search?q=${encodeURIComponent(
+            title.trim() + (author.trim() ? ` ${author.trim()}` : "")
+          )}`
         );
         const json = await res.json();
 
@@ -66,15 +90,35 @@ export const AddBookModal: React.FC<AddBookModalProps> = ({
           setAuthor(b.author || author);
           if (b.isbn) setIsbn(b.isbn);
           setFormatType(b.formatType || formatType);
-          setBnFeedback(`✓ Znaleziono w BN: ${b.publisher} (${b.publicationYear})`);
+
+          const providerLabel =
+            b.source === "bn"
+              ? "Biblioteka Narodowa"
+              : b.source === "openlibrary"
+              ? "Open Library"
+              : "Google Books";
+
+          setLookupFeedback(
+            `✓ Znaleziono (${providerLabel}): ${b.publisher || ""} ${
+              b.publicationYear ? `(${b.publicationYear})` : ""
+            }`
+          );
         } else {
-          setBnFeedback("Brak wyników w BN dla tego tytułu.");
+          setLookupFeedback(
+            lang === "pl"
+              ? "Brak wyników w połączonych bazach dla tego tytułu."
+              : "No search results across connected providers."
+          );
         }
       }
     } catch {
-      setBnFeedback("Błąd połączenia z API Biblioteki Narodowej.");
+      setLookupFeedback(
+        lang === "pl"
+          ? "Błąd połączenia z bazą książek."
+          : "Connection error with book provider APIs."
+      );
     } finally {
-      setIsLoadingBn(false);
+      setIsLoadingLookup(false);
     }
   };
 
@@ -107,33 +151,40 @@ export const AddBookModal: React.FC<AddBookModalProps> = ({
           </button>
         </div>
 
-        {/* BN Quick Lookup Section */}
-        <div className="my-3 p-3 rounded-xl bg-gradient-to-r from-brand-950/40 to-gray-950/60 border border-brand-500/20 text-xs">
+        {/* Multi-Provider Quick Lookup Section */}
+        <div className="my-3 p-3 rounded-xl bg-gradient-to-r from-brand-950/40 via-purple-950/20 to-gray-950/60 border border-brand-500/20 text-xs">
           <div className="flex items-center justify-between gap-2">
-            <span className="font-semibold text-brand-300 flex items-center gap-1">
-              <span>🏛️ API Biblioteki Narodowej</span>
-            </span>
+            <div>
+              <span className="font-semibold text-brand-300 flex items-center gap-1">
+                <span>🌐 Multi-Provider Auto-Fetch</span>
+              </span>
+              <span className="text-[10px] text-gray-400 block">
+                {lang === "pl"
+                  ? "BN • Open Library • Google Books"
+                  : "PL National Lib • Open Library • Google Books"}
+              </span>
+            </div>
             <button
               type="button"
-              onClick={handleBnLookup}
-              disabled={isLoadingBn}
+              onClick={handleLookup}
+              disabled={isLoadingLookup}
               className="px-2.5 py-1 rounded bg-brand-600 hover:bg-brand-500 text-white font-semibold transition flex items-center gap-1 disabled:opacity-50"
             >
-              {isLoadingBn ? (
+              {isLoadingLookup ? (
                 <Loader2 className="w-3.5 h-3.5 animate-spin" />
               ) : (
                 <Search className="w-3.5 h-3.5" />
               )}
-              <span>Pobierz dane</span>
+              <span>{lang === "pl" ? "Pobierz dane" : "Auto-fill"}</span>
             </button>
           </div>
-          {bnFeedback && (
+          {lookupFeedback && (
             <p
               className={`mt-2 text-[11px] font-medium ${
-                bnFeedback.startsWith("✓") ? "text-emerald-400" : "text-amber-400"
+                lookupFeedback.startsWith("✓") ? "text-emerald-400" : "text-amber-400"
               }`}
             >
-              {bnFeedback}
+              {lookupFeedback}
             </p>
           )}
         </div>
