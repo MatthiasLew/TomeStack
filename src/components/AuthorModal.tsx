@@ -4,6 +4,7 @@ import React from "react";
 import { Author, Series, Book, Language, UserAccount } from "@/types";
 import { translations } from "@/data/mockData";
 import { X, BookOpen } from "lucide-react";
+import { BookCover } from "./BookCover";
 
 interface AuthorModalProps {
   author: Author;
@@ -135,12 +136,14 @@ export const AuthorModal: React.FC<AuthorModalProps> = ({
                           }`}
                         >
                           <div className="flex items-center gap-2.5">
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img
-                              src={book.cover}
-                              alt={book.title}
-                              className="w-10 h-14 object-cover rounded shadow"
-                            />
+                            <div className="w-10 h-14 shrink-0 rounded overflow-hidden shadow">
+                              <BookCover
+                                src={book.cover}
+                                isbn={book.editions?.[0]?.isbn}
+                                title={book.title}
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
                             <div>
                               <p className="text-xs font-bold text-white line-clamp-1">
                                 #{book.volume} {book.title}

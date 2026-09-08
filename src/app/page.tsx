@@ -31,7 +31,11 @@ import { AuthModal } from "@/components/AuthModal";
 import { BarcodeScannerModal } from "@/components/BarcodeScannerModal";
 import { AuthorSearchModal } from "@/components/AuthorSearchModal";
 import { EmptyLibraryHero } from "@/components/EmptyLibraryHero";
-import { canonicalizeBookTitle, cleanDisplayTitle } from "@/lib/api/bookProviders";
+import {
+  canonicalizeBookTitle,
+  cleanDisplayTitle,
+  CURATED_AUTHOR_BIBLIOGRAPHIES,
+} from "@/lib/api/bookProviders";
 import {
   loadUserShelfFromCloud,
   saveUserBookToCloud,
@@ -41,8 +45,34 @@ import {
 /**
  * Consolidates series books so that any duplicates representing the same literary work
  * are automatically merged into a single card with multiple editions.
+ * Automatically enriches missing or broken covers with verified high-res covers.
  */
 function consolidateSeriesList(list: Series[]): Series[] {
+  // Build lookup of verified high-res covers from initial database & curated bibliographies
+  const knownCoverMap = new Map<string, string>();
+
+  for (const s of initialSeriesDatabase) {
+    for (const b of s.books) {
+      if (b.cover && !b.cover.includes("/b/isbn/")) {
+        const k = canonicalizeBookTitle(cleanDisplayTitle(b.title));
+        if (k && !knownCoverMap.has(k)) {
+          knownCoverMap.set(k, b.cover);
+        }
+      }
+    }
+  }
+
+  for (const authorWorks of Object.values(CURATED_AUTHOR_BIBLIOGRAPHIES)) {
+    for (const w of authorWorks) {
+      if (w.coverUrl && !w.coverUrl.includes("/b/isbn/")) {
+        const k = canonicalizeBookTitle(cleanDisplayTitle(w.title));
+        if (k && !knownCoverMap.has(k)) {
+          knownCoverMap.set(k, w.coverUrl);
+        }
+      }
+    }
+  }
+
   return list.map((series) => {
     const canonicalMap = new Map<string, Book>();
 
@@ -51,11 +81,19 @@ function consolidateSeriesList(list: Series[]): Series[] {
       const key = canonicalizeBookTitle(displayTitle);
       if (!key) continue;
 
+      const verifiedCover = knownCoverMap.get(key);
+
       const existing = canonicalMap.get(key);
       if (!existing) {
+        let cover = book.cover;
+        if ((!cover || cover.includes("/b/isbn/")) && verifiedCover) {
+          cover = verifiedCover;
+        }
+
         canonicalMap.set(key, {
           ...book,
           title: displayTitle,
+          cover: cover || "",
         });
       } else {
         // Merge editions (deduplicating by ISBN or format/publisher)
@@ -76,8 +114,11 @@ function consolidateSeriesList(list: Series[]): Series[] {
           }
         }
 
-        // Prefer existing cover or incoming cover
-        const cover = existing.cover || book.cover;
+        // Prefer verified cover, existing cover, or incoming cover
+        let cover = existing.cover || book.cover;
+        if ((!cover || cover.includes("/b/isbn/")) && verifiedCover) {
+          cover = verifiedCover;
+        }
 
         // Keep shorter / cleaner title
         const currentTitle = cleanDisplayTitle(existing.title);
@@ -87,7 +128,7 @@ function consolidateSeriesList(list: Series[]): Series[] {
         canonicalMap.set(key, {
           ...existing,
           title,
-          cover,
+          cover: cover || "",
           editions: mergedEditions,
           prices: mergedPrices,
         });

@@ -23,6 +23,12 @@ export const BookCover: React.FC<BookCoverProps> = ({
 
   const cleanIsbn = isbn?.replace(/[^0-9X]/gi, "");
 
+  React.useEffect(() => {
+    setCandidateIndex(0);
+    setIsLoaded(false);
+    setHasFailedAll(false);
+  }, [src, cleanIsbn]);
+
   // Build unique candidate cover URLs
   const candidateUrls = useMemo(() => {
     const urls: string[] = [];

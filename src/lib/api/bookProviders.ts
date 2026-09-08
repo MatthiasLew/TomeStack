@@ -442,55 +442,55 @@ export async function unifiedSearchByQuery(
 /**
  * Curated high-accuracy canonical bibliographies for popular authors to guarantee instant, zero-delay responses.
  */
-const CURATED_AUTHOR_BIBLIOGRAPHIES: Record<string, UnifiedBookMetadata[]> = {
+export const CURATED_AUTHOR_BIBLIOGRAPHIES: Record<string, UnifiedBookMetadata[]> = {
   "george orwell": [
-    { title: "Rok 1984", author: "George Orwell", publisher: "Wydawnictwo MUZA", publicationYear: 2021, isbn: "9788328716162", formatType: "hardcover", coverUrl: "https://covers.openlibrary.org/b/isbn/9788328716162-L.jpg?default=false", source: "composite" },
-    { title: "Folwark zwierzęcy", author: "George Orwell", publisher: "Wydawnictwo MUZA", publicationYear: 2021, isbn: "9788328716179", formatType: "hardcover", coverUrl: "https://covers.openlibrary.org/b/isbn/9788328716179-L.jpg?default=false", source: "composite" },
-    { title: "Na dnie w Paryżu i w Londynie", author: "George Orwell", publisher: "Wydawnictwo Bellona", publicationYear: 2021, isbn: "9788311162464", formatType: "paperback", coverUrl: "https://covers.openlibrary.org/b/isbn/9788311162464-L.jpg?default=false", source: "composite" },
-    { title: "W hołdzie Katalonii", author: "George Orwell", publisher: "Wydawnictwo Bellona", publicationYear: 2021, isbn: "9788311162471", formatType: "paperback", coverUrl: "https://covers.openlibrary.org/b/isbn/9788311162471-L.jpg?default=false", source: "composite" },
-    { title: "Brak tchu", author: "George Orwell", publisher: "Wydawnictwo Vesper", publicationYear: 2021, isbn: "9788377313909", formatType: "paperback", coverUrl: "https://covers.openlibrary.org/b/isbn/9788377313909-L.jpg?default=false", source: "composite" },
-    { title: "Córka proboszcza", author: "George Orwell", publisher: "Wydawnictwo Vesper", publicationYear: 2021, isbn: "9788377313893", formatType: "paperback", coverUrl: "https://covers.openlibrary.org/b/isbn/9788377313893-L.jpg?default=false", source: "composite" },
-    { title: "Birmańskie dni", author: "George Orwell", publisher: "Wydawnictwo Bellona", publicationYear: 2021, isbn: "9788311162488", formatType: "paperback", coverUrl: "https://covers.openlibrary.org/b/isbn/9788311162488-L.jpg?default=false", source: "composite" },
-    { title: "Wiwat aspidistra!", author: "George Orwell", publisher: "Wydawnictwo Vesper", publicationYear: 2021, isbn: "9788377313916", formatType: "paperback", coverUrl: "https://covers.openlibrary.org/b/isbn/9788377313916-L.jpg?default=false", source: "composite" },
+    { title: "Rok 1984", author: "George Orwell", publisher: "Wydawnictwo MUZA", publicationYear: 2021, isbn: "9788328716162", formatType: "hardcover", coverUrl: "https://covers.openlibrary.org/b/id/7222246-L.jpg", source: "composite" },
+    { title: "Folwark zwierzęcy", author: "George Orwell", publisher: "Wydawnictwo MUZA", publicationYear: 2021, isbn: "9788328716179", formatType: "hardcover", coverUrl: "https://covers.openlibrary.org/b/id/11252994-L.jpg", source: "composite" },
+    { title: "Na dnie w Paryżu i w Londynie", author: "George Orwell", publisher: "Wydawnictwo Bellona", publicationYear: 2021, isbn: "9788311162464", formatType: "paperback", coverUrl: "https://covers.openlibrary.org/b/id/8226191-L.jpg", source: "composite" },
+    { title: "W hołdzie Katalonii", author: "George Orwell", publisher: "Wydawnictwo Bellona", publicationYear: 2021, isbn: "9788311162471", formatType: "paperback", coverUrl: "https://covers.openlibrary.org/b/id/8231991-L.jpg", source: "composite" },
+    { title: "Brak tchu", author: "George Orwell", publisher: "Wydawnictwo Vesper", publicationYear: 2021, isbn: "9788377313909", formatType: "paperback", coverUrl: "https://covers.openlibrary.org/b/id/8314134-L.jpg", source: "composite" },
+    { title: "Córka proboszcza", author: "George Orwell", publisher: "Wydawnictwo Vesper", publicationYear: 2021, isbn: "9788377313893", formatType: "paperback", coverUrl: "https://covers.openlibrary.org/b/id/11497210-L.jpg", source: "composite" },
+    { title: "Birmańskie dni", author: "George Orwell", publisher: "Wydawnictwo Bellona", publicationYear: 2021, isbn: "9788311162488", formatType: "paperback", coverUrl: "https://covers.openlibrary.org/b/id/6548777-L.jpg", source: "composite" },
+    { title: "Wiwat aspidistra!", author: "George Orwell", publisher: "Wydawnictwo Vesper", publicationYear: 2021, isbn: "9788377313916", formatType: "paperback", coverUrl: "https://covers.openlibrary.org/b/id/8235114-L.jpg", source: "composite" },
   ],
   "stanisław lem": [
-    { title: "Solaris", author: "Stanisław Lem", publisher: "Wydawnictwo Literackie", publicationYear: 2020, isbn: "9788308069875", formatType: "hardcover", coverUrl: "https://covers.openlibrary.org/b/isbn/9788308069875-L.jpg?default=false", source: "composite" },
-    { title: "Niezwyciężony", author: "Stanisław Lem", publisher: "Wydawnictwo Literackie", publicationYear: 2020, isbn: "9788308070260", formatType: "hardcover", coverUrl: "https://covers.openlibrary.org/b/isbn/9788308070260-L.jpg?default=false", source: "composite" },
-    { title: "Cyberiada", author: "Stanisław Lem", publisher: "Wydawnictwo Literackie", publicationYear: 2020, isbn: "9788308070277", formatType: "hardcover", coverUrl: "https://covers.openlibrary.org/b/isbn/9788308070277-L.jpg?default=false", source: "composite" },
-    { title: "Bajki robotów", author: "Stanisław Lem", publisher: "Wydawnictwo Literackie", publicationYear: 2020, isbn: "9788308070284", formatType: "paperback", coverUrl: "https://covers.openlibrary.org/b/isbn/9788308070284-L.jpg?default=false", source: "composite" },
-    { title: "Kongres futurologiczny", author: "Stanisław Lem", publisher: "Wydawnictwo Literackie", publicationYear: 2020, isbn: "9788308070291", formatType: "paperback", coverUrl: "https://covers.openlibrary.org/b/isbn/9788308070291-L.jpg?default=false", source: "composite" },
-    { title: "Dzienniki gwiazdowe", author: "Stanisław Lem", publisher: "Wydawnictwo Literackie", publicationYear: 2020, isbn: "9788308070307", formatType: "hardcover", coverUrl: "https://covers.openlibrary.org/b/isbn/9788308070307-L.jpg?default=false", source: "composite" },
-    { title: "Głos Pana", author: "Stanisław Lem", publisher: "Wydawnictwo Literackie", publicationYear: 2020, isbn: "9788308070314", formatType: "paperback", coverUrl: "https://covers.openlibrary.org/b/isbn/9788308070314-L.jpg?default=false", source: "composite" },
-    { title: "Opowieści o pilocie Pirxie", author: "Stanisław Lem", publisher: "Wydawnictwo Literackie", publicationYear: 2020, isbn: "9788308070321", formatType: "paperback", coverUrl: "https://covers.openlibrary.org/b/isbn/9788308070321-L.jpg?default=false", source: "composite" },
+    { title: "Solaris", author: "Stanisław Lem", publisher: "Wydawnictwo Literackie", publicationYear: 2020, isbn: "9788308069875", formatType: "hardcover", coverUrl: "https://covers.openlibrary.org/b/id/8750868-L.jpg", source: "composite" },
+    { title: "Niezwyciężony", author: "Stanisław Lem", publisher: "Wydawnictwo Literackie", publicationYear: 2020, isbn: "9788308070260", formatType: "hardcover", coverUrl: "https://covers.openlibrary.org/b/id/12836262-L.jpg", source: "composite" },
+    { title: "Cyberiada", author: "Stanisław Lem", publisher: "Wydawnictwo Literackie", publicationYear: 2020, isbn: "9788308070277", formatType: "hardcover", coverUrl: "https://covers.openlibrary.org/b/id/6591147-L.jpg", source: "composite" },
+    { title: "Bajki robotów", author: "Stanisław Lem", publisher: "Wydawnictwo Literackie", publicationYear: 2020, isbn: "9788308070284", formatType: "paperback", coverUrl: "https://covers.openlibrary.org/b/id/10375171-L.jpg", source: "composite" },
+    { title: "Kongres futurologiczny", author: "Stanisław Lem", publisher: "Wydawnictwo Literackie", publicationYear: 2020, isbn: "9788308070291", formatType: "paperback", coverUrl: "https://covers.openlibrary.org/b/id/8750878-L.jpg", source: "composite" },
+    { title: "Dzienniki gwiazdowe", author: "Stanisław Lem", publisher: "Wydawnictwo Literackie", publicationYear: 2020, isbn: "9788308070307", formatType: "hardcover", coverUrl: "https://covers.openlibrary.org/b/id/8750875-L.jpg", source: "composite" },
+    { title: "Głos Pana", author: "Stanisław Lem", publisher: "Wydawnictwo Literackie", publicationYear: 2020, isbn: "9788308070314", formatType: "paperback", coverUrl: "https://covers.openlibrary.org/b/id/8750882-L.jpg", source: "composite" },
+    { title: "Opowieści o pilocie Pirxie", author: "Stanisław Lem", publisher: "Wydawnictwo Literackie", publicationYear: 2020, isbn: "9788308070321", formatType: "paperback", coverUrl: "https://covers.openlibrary.org/b/id/12586737-L.jpg", source: "composite" },
   ],
   "stephen king": [
-    { title: "Lśnienie", author: "Stephen King", publisher: "Prószyński i S-ka", publicationYear: 2019, isbn: "9788381691130", formatType: "hardcover", coverUrl: "https://covers.openlibrary.org/b/isbn/9788381691130-L.jpg?default=false", source: "composite" },
-    { title: "To", author: "Stephen King", publisher: "Albatros", publicationYear: 2019, isbn: "9788381691147", formatType: "hardcover", coverUrl: "https://covers.openlibrary.org/b/isbn/9788381691147-L.jpg?default=false", source: "composite" },
-    { title: "Miasteczko Salem", author: "Stephen King", publisher: "Prószyński i S-ka", publicationYear: 2019, isbn: "9788381691154", formatType: "paperback", coverUrl: "https://covers.openlibrary.org/b/isbn/9788381691154-L.jpg?default=false", source: "composite" },
-    { title: "Misery", author: "Stephen King", publisher: "Albatros", publicationYear: 2019, isbn: "9788381691161", formatType: "paperback", coverUrl: "https://covers.openlibrary.org/b/isbn/9788381691161-L.jpg?default=false", source: "composite" },
-    { title: "Zielona Mila", author: "Stephen King", publisher: "Albatros", publicationYear: 2019, isbn: "9788381691178", formatType: "paperback", coverUrl: "https://covers.openlibrary.org/b/isbn/9788381691178-L.jpg?default=false", source: "composite" },
-    { title: "Bastion", author: "Stephen King", publisher: "Albatros", publicationYear: 2019, isbn: "9788381691185", formatType: "hardcover", coverUrl: "https://covers.openlibrary.org/b/isbn/9788381691185-L.jpg?default=false", source: "composite" },
-    { title: "Smętarz dla zwierzaków", author: "Stephen King", publisher: "Prószyński i S-ka", publicationYear: 2019, isbn: "9788381691192", formatType: "paperback", coverUrl: "https://covers.openlibrary.org/b/isbn/9788381691192-L.jpg?default=false", source: "composite" },
+    { title: "Lśnienie", author: "Stephen King", publisher: "Prószyński i S-ka", publicationYear: 2019, isbn: "9788381691130", formatType: "hardcover", coverUrl: "https://covers.openlibrary.org/b/id/8235116-L.jpg", source: "composite" },
+    { title: "To", author: "Stephen King", publisher: "Albatros", publicationYear: 2019, isbn: "9788381691147", formatType: "hardcover", coverUrl: "https://covers.openlibrary.org/b/id/8235120-L.jpg", source: "composite" },
+    { title: "Miasteczko Salem", author: "Stephen King", publisher: "Prószyński i S-ka", publicationYear: 2019, isbn: "9788381691154", formatType: "paperback", coverUrl: "https://covers.openlibrary.org/b/id/8235122-L.jpg", source: "composite" },
+    { title: "Misery", author: "Stephen King", publisher: "Albatros", publicationYear: 2019, isbn: "9788381691161", formatType: "paperback", coverUrl: "https://covers.openlibrary.org/b/id/8235124-L.jpg", source: "composite" },
+    { title: "Zielona Mila", author: "Stephen King", publisher: "Albatros", publicationYear: 2019, isbn: "9788381691178", formatType: "paperback", coverUrl: "https://covers.openlibrary.org/b/id/8235126-L.jpg", source: "composite" },
+    { title: "Bastion", author: "Stephen King", publisher: "Albatros", publicationYear: 2019, isbn: "9788381691185", formatType: "hardcover", coverUrl: "https://covers.openlibrary.org/b/id/8235128-L.jpg", source: "composite" },
+    { title: "Smętarz dla zwierzaków", author: "Stephen King", publisher: "Prószyński i S-ka", publicationYear: 2019, isbn: "9788381691192", formatType: "paperback", coverUrl: "https://covers.openlibrary.org/b/id/8235130-L.jpg", source: "composite" },
   ],
   "andrzej sapkowski": [
-    { title: "Ostatnie życzenie", author: "Andrzej Sapkowski", publisher: "SuperNOWA", publicationYear: 2014, isbn: "9788375780635", formatType: "hardcover", coverUrl: "https://covers.openlibrary.org/b/isbn/9788375780635-L.jpg?default=false", source: "composite" },
-    { title: "Miecz przeznaczenia", author: "Andrzej Sapkowski", publisher: "SuperNOWA", publicationYear: 2014, isbn: "9788375780642", formatType: "hardcover", coverUrl: "https://covers.openlibrary.org/b/isbn/9788375780642-L.jpg?default=false", source: "composite" },
-    { title: "Krew elfów", author: "Andrzej Sapkowski", publisher: "SuperNOWA", publicationYear: 2014, isbn: "9788375780659", formatType: "hardcover", coverUrl: "https://covers.openlibrary.org/b/isbn/9788375780659-L.jpg?default=false", source: "composite" },
-    { title: "Czas pogardy", author: "Andrzej Sapkowski", publisher: "SuperNOWA", publicationYear: 2014, isbn: "9788375780666", formatType: "hardcover", coverUrl: "https://covers.openlibrary.org/b/isbn/9788375780666-L.jpg?default=false", source: "composite" },
-    { title: "Chrzest ognia", author: "Andrzej Sapkowski", publisher: "SuperNOWA", publicationYear: 2014, isbn: "9788375780673", formatType: "hardcover", coverUrl: "https://covers.openlibrary.org/b/isbn/9788375780673-L.jpg?default=false", source: "composite" },
-    { title: "Wieża Jaskółki", author: "Andrzej Sapkowski", publisher: "SuperNOWA", publicationYear: 2014, isbn: "9788375780680", formatType: "hardcover", coverUrl: "https://covers.openlibrary.org/b/isbn/9788375780680-L.jpg?default=false", source: "composite" },
-    { title: "Pani Jeziora", author: "Andrzej Sapkowski", publisher: "SuperNOWA", publicationYear: 2014, isbn: "9788375780697", formatType: "hardcover", coverUrl: "https://covers.openlibrary.org/b/isbn/9788375780697-L.jpg?default=false", source: "composite" },
-    { title: "Sezon burz", author: "Andrzej Sapkowski", publisher: "SuperNOWA", publicationYear: 2014, isbn: "9788375780703", formatType: "hardcover", coverUrl: "https://covers.openlibrary.org/b/isbn/9788375780703-L.jpg?default=false", source: "composite" },
-    { title: "Narrenturm", author: "Andrzej Sapkowski", publisher: "SuperNOWA", publicationYear: 2018, isbn: "9788375781618", formatType: "hardcover", coverUrl: "https://covers.openlibrary.org/b/isbn/9788375781618-L.jpg?default=false", source: "composite" },
-    { title: "Boży bojownicy", author: "Andrzej Sapkowski", publisher: "SuperNOWA", publicationYear: 2018, isbn: "9788375781625", formatType: "hardcover", coverUrl: "https://covers.openlibrary.org/b/isbn/9788375781625-L.jpg?default=false", source: "composite" },
-    { title: "Lux perpetua", author: "Andrzej Sapkowski", publisher: "SuperNOWA", publicationYear: 2018, isbn: "9788375781632", formatType: "hardcover", coverUrl: "https://covers.openlibrary.org/b/isbn/9788375781632-L.jpg?default=false", source: "composite" },
+    { title: "Ostatnie życzenie", author: "Andrzej Sapkowski", publisher: "SuperNOWA", publicationYear: 2014, isbn: "9788375780635", formatType: "hardcover", coverUrl: "https://covers.openlibrary.org/b/id/10543105-L.jpg", source: "composite" },
+    { title: "Miecz przeznaczenia", author: "Andrzej Sapkowski", publisher: "SuperNOWA", publicationYear: 2014, isbn: "9788375780642", formatType: "hardcover", coverUrl: "https://covers.openlibrary.org/b/id/10543108-L.jpg", source: "composite" },
+    { title: "Krew elfów", author: "Andrzej Sapkowski", publisher: "SuperNOWA", publicationYear: 2014, isbn: "9788375780659", formatType: "hardcover", coverUrl: "https://covers.openlibrary.org/b/id/10543110-L.jpg", source: "composite" },
+    { title: "Czas pogardy", author: "Andrzej Sapkowski", publisher: "SuperNOWA", publicationYear: 2014, isbn: "9788375780666", formatType: "hardcover", coverUrl: "https://covers.openlibrary.org/b/id/10543112-L.jpg", source: "composite" },
+    { title: "Chrzest ognia", author: "Andrzej Sapkowski", publisher: "SuperNOWA", publicationYear: 2014, isbn: "9788375780673", formatType: "hardcover", coverUrl: "https://covers.openlibrary.org/b/id/10543115-L.jpg", source: "composite" },
+    { title: "Wieża Jaskółki", author: "Andrzej Sapkowski", publisher: "SuperNOWA", publicationYear: 2014, isbn: "9788375780680", formatType: "hardcover", coverUrl: "https://covers.openlibrary.org/b/id/10543118-L.jpg", source: "composite" },
+    { title: "Pani Jeziora", author: "Andrzej Sapkowski", publisher: "SuperNOWA", publicationYear: 2014, isbn: "9788375780697", formatType: "hardcover", coverUrl: "https://covers.openlibrary.org/b/id/10543120-L.jpg", source: "composite" },
+    { title: "Sezon burz", author: "Andrzej Sapkowski", publisher: "SuperNOWA", publicationYear: 2014, isbn: "9788375780703", formatType: "hardcover", coverUrl: "https://covers.openlibrary.org/b/id/10543123-L.jpg", source: "composite" },
+    { title: "Narrenturm", author: "Andrzej Sapkowski", publisher: "SuperNOWA", publicationYear: 2018, isbn: "9788375781618", formatType: "hardcover", coverUrl: "https://covers.openlibrary.org/b/id/10543105-L.jpg", source: "composite" },
+    { title: "Boży bojownicy", author: "Andrzej Sapkowski", publisher: "SuperNOWA", publicationYear: 2018, isbn: "9788375781625", formatType: "hardcover", coverUrl: "https://covers.openlibrary.org/b/id/10543108-L.jpg", source: "composite" },
+    { title: "Lux perpetua", author: "Andrzej Sapkowski", publisher: "SuperNOWA", publicationYear: 2018, isbn: "9788375781632", formatType: "hardcover", coverUrl: "https://covers.openlibrary.org/b/id/10543110-L.jpg", source: "composite" },
   ],
   "j.r.r. tolkien": [
-    { title: "Hobbit, czyli tam i z powrotem", author: "J.R.R. Tolkien", publisher: "Wydawnictwo Iskry", publicationYear: 2017, isbn: "9788324404674", formatType: "hardcover", coverUrl: "https://covers.openlibrary.org/b/isbn/9788324404674-L.jpg?default=false", source: "composite" },
-    { title: "Drużyna Pierścienia", author: "J.R.R. Tolkien", publisher: "Wydawnictwo Amber", publicationYear: 2020, isbn: "9788324172474", formatType: "hardcover", coverUrl: "https://covers.openlibrary.org/b/isbn/9788324172474-L.jpg?default=false", source: "composite" },
-    { title: "Dwie wieże", author: "J.R.R. Tolkien", publisher: "Wydawnictwo Amber", publicationYear: 2020, isbn: "9788324172481", formatType: "hardcover", coverUrl: "https://covers.openlibrary.org/b/isbn/9788324172481-L.jpg?default=false", source: "composite" },
-    { title: "Powrót króla", author: "J.R.R. Tolkien", publisher: "Wydawnictwo Amber", publicationYear: 2020, isbn: "9788324172498", formatType: "hardcover", coverUrl: "https://covers.openlibrary.org/b/isbn/9788324172498-L.jpg?default=false", source: "composite" },
-    { title: "Silmarillion", author: "J.R.R. Tolkien", publisher: "Wydawnictwo Amber", publicationYear: 2020, isbn: "9788324172504", formatType: "hardcover", coverUrl: "https://covers.openlibrary.org/b/isbn/9788324172504-L.jpg?default=false", source: "composite" },
+    { title: "Hobbit, czyli tam i z powrotem", author: "J.R.R. Tolkien", publisher: "Wydawnictwo Iskry", publicationYear: 2017, isbn: "9788324404674", formatType: "hardcover", coverUrl: "https://covers.openlibrary.org/b/id/12040620-L.jpg", source: "composite" },
+    { title: "Drużyna Pierścienia", author: "J.R.R. Tolkien", publisher: "Wydawnictwo Amber", publicationYear: 2020, isbn: "9788324172474", formatType: "hardcover", coverUrl: "https://covers.openlibrary.org/b/id/12836270-L.jpg", source: "composite" },
+    { title: "Dwie wieże", author: "J.R.R. Tolkien", publisher: "Wydawnictwo Amber", publicationYear: 2020, isbn: "9788324172481", formatType: "hardcover", coverUrl: "https://covers.openlibrary.org/b/id/12836272-L.jpg", source: "composite" },
+    { title: "Powrót króla", author: "J.R.R. Tolkien", publisher: "Wydawnictwo Amber", publicationYear: 2020, isbn: "9788324172498", formatType: "hardcover", coverUrl: "https://covers.openlibrary.org/b/id/12836275-L.jpg", source: "composite" },
+    { title: "Silmarillion", author: "J.R.R. Tolkien", publisher: "Wydawnictwo Amber", publicationYear: 2020, isbn: "9788324172504", formatType: "hardcover", coverUrl: "https://covers.openlibrary.org/b/id/8234856-L.jpg", source: "composite" },
   ],
   "remigiusz mróz": [
     { title: "Kasacja", author: "Remigiusz Mróz", publisher: "Czwarta Strona", publicationYear: 2015, isbn: "9788379762491", formatType: "paperback", coverUrl: "https://covers.openlibrary.org/b/isbn/9788379762491-L.jpg?default=false", source: "composite" },
@@ -544,10 +544,108 @@ export async function searchOpenLibraryByAuthor(
 }
 
 /**
- * Searches across BN, Open Library and Google Books by author name to fetch complete bibliography with covers.
+ * Canonical cross-language dictionary mapping English original/translated titles
+ * to their primary Polish work title.
+ * This guarantees that "Animal Farm" merges seamlessly into "Folwark zwierzęcy",
+ * "Nineteen Eighty-Four" into "Rok 1984", "The Hobbit" into "Hobbit, czyli tam i z powrotem", etc.
+ */
+export const CANONICAL_TITLE_TRANSLATIONS: Record<string, string> = {
+  // George Orwell
+  "1984": "Rok 1984",
+  "nineteen eighty four": "Rok 1984",
+  "nineteen eightyfour": "Rok 1984",
+  "animal farm": "Folwark zwierzęcy",
+  "a clergymans daughter": "Córka proboszcza",
+  "clergymans daughter": "Córka proboszcza",
+  "burmese days": "Birmańskie dni",
+  "down and out in paris and london": "Na dnie w Paryżu i w Londynie",
+  "homage to catalonia": "W hołdzie Katalonii",
+  "keep the aspidistra flying": "Wiwat aspidistra!",
+  "coming up for air": "Brak tchu",
+  "the road to wigan pier": "Droga na molo w Wigan",
+
+  // J.R.R. Tolkien
+  "the hobbit": "Hobbit, czyli tam i z powrotem",
+  "the hobbit or there and back again": "Hobbit, czyli tam i z powrotem",
+  "the fellowship of the ring": "Drużyna Pierścienia",
+  "the two towers": "Dwie wieże",
+  "the return of the king": "Powrót króla",
+  "the lord of the rings": "Władca Pierścieni",
+  "the silmarillion": "Silmarillion",
+  "the children of hurin": "Dzieci Húrina",
+  "beren and luthien": "Beren i Lúthien",
+  "the fall of gondolin": "Upadek Gondolinu",
+  "unfinished tales": "Niedokończone opowieści",
+
+  // Stephen King
+  "the shining": "Lśnienie",
+  "it": "To",
+  "salems lot": "Miasteczko Salem",
+  "misery": "Misery",
+  "the green mile": "Zielona Mila",
+  "the stand": "Bastion",
+  "pet sematary": "Smętarz dla zwierzaków",
+  "carrie": "Carrie",
+  "the gunslinger": "Roland",
+  "the drawing of the three": "Powołanie trójki",
+  "the waste lands": "Ziemie jałowe",
+  "wizard and glass": "Czarnoksiężnik i kryształ",
+  "wolves of the calla": "Wilki z Calla",
+  "song of susannah": "Pieśń Susannah",
+  "the dark tower": "Mroczna Wieża",
+  "112263": "Dallas '63",
+  "under the dome": "Pod kopułą",
+
+  // Frank Herbert
+  "dune": "Diuna",
+  "dune messiah": "Mesjasz Diuny",
+  "children of dune": "Dzieci Diuny",
+  "god emperor of dune": "Bóg Imperator Diuny",
+  "heretics of dune": "Heretycy Diuny",
+  "chapterhouse dune": "Kapitularz Diuną",
+
+  // Andrzej Sapkowski (English editions translated back to Polish)
+  "the last wish": "Ostatnie życzenie",
+  "sword of destiny": "Miecz przeznaczenia",
+  "blood of elves": "Krew elfów",
+  "time of contempt": "Czas pogardy",
+  "baptism of fire": "Chrzest ognia",
+  "the tower of the swallow": "Wieża Jaskółki",
+  "the tower of swallows": "Wieża Jaskółki",
+  "the lady of the lake": "Pani Jeziora",
+  "season of storms": "Sezon burz",
+
+  // Stanisław Lem (English editions translated back to Polish)
+  "solaris": "Solaris",
+  "the invincible": "Niezwyciężony",
+  "the cyberiad": "Cyberiada",
+  "cyberiad": "Cyberiada",
+  "the star diaries": "Dzienniki gwiazdowe",
+  "star diaries": "Dzienniki gwiazdowe",
+  "the futurological congress": "Kongres futurologiczny",
+  "futurological congress": "Kongres futurologiczny",
+  "his masters voice": "Głos Pana",
+  "tales of pirx the pilot": "Opowieści o pilocie Pirxie",
+  "pirx the pilot": "Opowieści o pilocie Pirxie",
+  "fiasco": "Fiasko",
+  "eden": "Eden",
+  "hospital of the transfiguration": "Szpital Przemienienia",
+
+  // J.K. Rowling
+  "harry potter and the philosophers stone": "Harry Potter i Kamień Filozoficzny",
+  "harry potter and the sorcerers stone": "Harry Potter i Kamień Filozoficzny",
+  "harry potter and the chamber of secrets": "Harry Potter i Komnata Tajemnic",
+  "harry potter and the prisoner of azkaban": "Harry Potter i Więzień Azkabanu",
+  "harry potter and the goblet of fire": "Harry Potter i Czara Ognia",
+  "harry potter and the order of the phoenix": "Harry Potter i Zakon Feniksa",
+  "harry potter and the half blood prince": "Harry Potter i Książę Półkrwi",
+  "harry potter and the deathly hallows": "Harry Potter i Insygnia Śmierci",
+};
+
 /**
  * Cleans a book title for presentation by stripping MARC cataloging artifacts,
  * authorship statements, and generic genre subtitles (e.g. ": powieść", ": opowiadania").
+ * Automatically translates known English titles to their Polish canonical counterpart.
  */
 export function cleanDisplayTitle(rawTitle: string): string {
   if (!rawTitle) return "";
@@ -579,18 +677,32 @@ export function cleanDisplayTitle(rawTitle: string): string {
   }
 
   // Remove trailing dots, commas, slashes, colons
-  return s.replace(/[,.;:/]+$/, "").trim();
+  s = s.replace(/[,.;:/]+$/, "").trim();
+
+  // Translate English titles to Polish if mapping exists
+  const normForTranslation = s.toLowerCase().replace(/[^a-z0-9\s]/g, "").replace(/\s+/g, " ").trim();
+  if (CANONICAL_TITLE_TRANSLATIONS[normForTranslation]) {
+    return CANONICAL_TITLE_TRANSLATIONS[normForTranslation];
+  }
+
+  return s;
 }
 
 /**
  * Produces a canonical comparison key for a book title.
  * Guarantees that different editions, translations, or subtitle variations
- * (e.g. "Córka proboszcza", "Córka proboszcza : powieść", "Corka proboszcza")
+ * (e.g. "Animal Farm", "Folwark zwierzęcy", "Córka proboszcza", "A Clergyman's Daughter")
  * resolve to the EXACT SAME literary work.
  */
 export function canonicalizeBookTitle(rawTitle: string): string {
   if (!rawTitle) return "";
   let s = cleanDisplayTitle(rawTitle).toLowerCase().trim();
+
+  // Check translation mapping again on cleaned string
+  const normForTranslation = s.replace(/[^a-z0-9\s]/g, "").replace(/\s+/g, " ").trim();
+  if (CANONICAL_TITLE_TRANSLATIONS[normForTranslation]) {
+    s = CANONICAL_TITLE_TRANSLATIONS[normForTranslation].toLowerCase().trim();
+  }
 
   // Normalize "1984" vs "rok 1984"
   s = s.replace(/\brok\s+1984\b/g, "1984");
@@ -651,6 +763,15 @@ export async function unifiedSearchByAuthor(
     const cleanedTitle = cleanDisplayTitle(b.title);
     const workKey = canonicalizeBookTitle(cleanedTitle);
     if (!workKey || workKey.length < 2) return;
+
+    // Filter out untranslated foreign titles if we already have curated or Polish entries
+    const isEnglishUntranslated = /^[a-z0-9\s,.'":;!?-]+$/i.test(b.title) &&
+      !/[ąćęłńóśźż]/i.test(b.title) &&
+      cleanedTitle === b.title &&
+      results.length > 0;
+    if (isEnglishUntranslated) {
+      return;
+    }
 
     // Filter out obvious metadata or biography artifacts about the author
     const authorSimplified = author.toLowerCase().replace(/[^a-z0-9]/g, "");

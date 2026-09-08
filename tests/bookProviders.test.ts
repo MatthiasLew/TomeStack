@@ -65,3 +65,34 @@ test("unifiedSearchByAuthor returns unique books without duplicates", async () =
     "Author search bibliography must have zero duplicate book cards"
   );
 });
+
+test("cleanDisplayTitle and canonicalizeBookTitle translate English editions to Polish canonical works", () => {
+  // English titles should display as their Polish canonical title
+  assert.equal(cleanDisplayTitle("Animal Farm"), "Folwark zwierzęcy");
+  assert.equal(cleanDisplayTitle("Nineteen Eighty-Four"), "Rok 1984");
+  assert.equal(cleanDisplayTitle("A Clergyman's Daughter"), "Córka proboszcza");
+  assert.equal(cleanDisplayTitle("The Hobbit"), "Hobbit, czyli tam i z powrotem");
+
+  // Canonical keys must match exactly between English and Polish editions
+  assert.equal(
+    canonicalizeBookTitle("Animal Farm"),
+    canonicalizeBookTitle("Folwark zwierzęcy")
+  );
+  assert.equal(
+    canonicalizeBookTitle("Nineteen Eighty-Four"),
+    canonicalizeBookTitle("Rok 1984")
+  );
+  assert.equal(
+    canonicalizeBookTitle("A Clergyman's Daughter"),
+    canonicalizeBookTitle("Córka proboszcza")
+  );
+  assert.equal(
+    canonicalizeBookTitle("The Hobbit"),
+    canonicalizeBookTitle("Hobbit, czyli tam i z powrotem")
+  );
+  assert.equal(
+    canonicalizeBookTitle("The Shining"),
+    canonicalizeBookTitle("Lśnienie")
+  );
+});
+
