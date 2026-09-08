@@ -3,7 +3,7 @@
 import React from "react";
 import { FormatFilter, StatusFilter, ActiveTab, Language } from "@/types";
 import { translations } from "@/data/mockData";
-import { Layers, Target, Library } from "lucide-react";
+import { Layers, Target, Library, Eye, EyeOff } from "lucide-react";
 
 interface FilterToolbarProps {
   formatFilter: FormatFilter;
@@ -13,6 +13,9 @@ interface FilterToolbarProps {
   activeTab: ActiveTab;
   onSetActiveTab: (tab: ActiveTab) => void;
   lang: Language;
+  showHidden?: boolean;
+  onToggleShowHidden?: () => void;
+  hiddenCount?: number;
 }
 
 export const FilterToolbar: React.FC<FilterToolbarProps> = ({
@@ -23,6 +26,9 @@ export const FilterToolbar: React.FC<FilterToolbarProps> = ({
   activeTab,
   onSetActiveTab,
   lang,
+  showHidden = false,
+  onToggleShowHidden,
+  hiddenCount = 0,
 }) => {
   const t = translations[lang];
 
@@ -128,16 +134,41 @@ export const FilterToolbar: React.FC<FilterToolbarProps> = ({
         </button>
       </div>
 
-      {/* View Tabs Switcher */}
-      <div className="flex items-center gap-1 bg-gray-900 p-1 rounded-lg border border-gray-800">
-        <button
-          onClick={() => onSetActiveTab("series")}
-          className={`px-3 py-1.5 rounded-md text-xs font-semibold transition flex items-center gap-1.5 ${
-            activeTab === "series"
-              ? "bg-brand-600 text-white shadow"
-              : "text-gray-400 hover:text-white"
-          }`}
-        >
+      {/* Actions & View Tabs Switcher */}
+      <div className="flex flex-wrap items-center gap-2">
+        {onToggleShowHidden && (
+          <button
+            type="button"
+            onClick={onToggleShowHidden}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer ${
+              showHidden
+                ? "bg-rose-600 text-white shadow ring-1 ring-rose-400"
+                : "bg-gray-900 hover:bg-gray-800 text-gray-400 hover:text-rose-300 border border-gray-800"
+            }`}
+            title={
+              showHidden
+                ? (lang === "pl" ? "Wróć do listy aktywnych książek" : "Back to active books")
+                : (lang === "pl" ? "Pokaż pozycje ukryte / 'Nie interesuje mnie to'" : "Show hidden items")
+            }
+          >
+            {showHidden ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5 text-rose-400" />}
+            <span>
+              {showHidden
+                ? (lang === "pl" ? "Widok ukrytych" : "Hidden view")
+                : (lang === "pl" ? `Ukryte${hiddenCount > 0 ? ` (${hiddenCount})` : ""}` : `Hidden${hiddenCount > 0 ? ` (${hiddenCount})` : ""}`)}
+            </span>
+          </button>
+        )}
+
+        <div className="flex items-center gap-1 bg-gray-900 p-1 rounded-lg border border-gray-800">
+          <button
+            onClick={() => onSetActiveTab("series")}
+            className={`px-3 py-1.5 rounded-md text-xs font-semibold transition flex items-center gap-1.5 ${
+              activeTab === "series"
+                ? "bg-brand-600 text-white shadow"
+                : "text-gray-400 hover:text-white"
+            }`}
+          >
           <Layers className="w-3.5 h-3.5" />
           <span>{t.tabSeries}</span>
         </button>
@@ -163,6 +194,7 @@ export const FilterToolbar: React.FC<FilterToolbarProps> = ({
           <Library className="w-3.5 h-3.5" />
           <span>{t.tabAll}</span>
         </button>
+        </div>
       </div>
     </div>
   );

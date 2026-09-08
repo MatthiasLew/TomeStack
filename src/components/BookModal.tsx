@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { Book, Series, FormatFilter, Language, UserAccount, ReadingStatus } from "@/types";
 import { translations } from "@/data/mockData";
-import { X, Check, ShoppingBag, BookOpen, BookmarkCheck } from "lucide-react";
+import { X, Check, ShoppingBag, BookOpen, BookmarkCheck, Eye, EyeOff } from "lucide-react";
 import { BookCover } from "./BookCover";
 
 interface BookModalProps {
@@ -16,6 +16,7 @@ interface BookModalProps {
   onToggleOwned: (bookId: string, editionId: string) => void;
   onOpenAuthor: (authorName: string) => void;
   onUpdateReadingStatus?: (bookId: string, status: ReadingStatus) => void;
+  onToggleHideBook?: (bookId: string) => void;
 }
 
 export const BookModal: React.FC<BookModalProps> = ({
@@ -28,11 +29,13 @@ export const BookModal: React.FC<BookModalProps> = ({
   onToggleOwned,
   onOpenAuthor,
   onUpdateReadingStatus,
+  onToggleHideBook,
 }) => {
   const t = translations[lang];
   const [modalFormat, setModalFormat] = useState<FormatFilter>("all");
 
   const isOwned = Boolean(currentUser?.ownedBooks && currentUser.ownedBooks[book.id]);
+  const isHidden = Boolean(currentUser?.hiddenBooks?.[book.id]);
   const userEditionId = currentUser?.ownedBooks?.[book.id];
 
   // Filter prices by selected format
@@ -93,6 +96,11 @@ export const BookModal: React.FC<BookModalProps> = ({
                 <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-gray-800 text-gray-300 border border-gray-700">
                   {book.formatType === "hardcover" ? "📖 Twarda oprawa" : "📕 Miękka oprawa"}
                 </span>
+                {isHidden && (
+                  <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/40 flex items-center gap-1">
+                    🚫 {lang === "pl" ? "Ukryta z widoku" : "Hidden from view"}
+                  </span>
+                )}
               </div>
             </div>
           </div>
@@ -359,12 +367,38 @@ export const BookModal: React.FC<BookModalProps> = ({
             )}
           </button>
 
-          <button
-            onClick={onClose}
-            className="px-4 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs font-semibold"
-          >
-            {t.closeBtn}
-          </button>
+          <div className="flex items-center gap-2">
+            {onToggleHideBook && (
+              <button
+                type="button"
+                onClick={() => onToggleHideBook(book.id)}
+                className={`px-3.5 py-2 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer ${
+                  isHidden
+                    ? "bg-rose-500/20 text-rose-300 border border-rose-500/40 hover:bg-rose-500 hover:text-white"
+                    : "bg-gray-800 text-gray-300 hover:text-rose-300 hover:bg-rose-950/40 border border-gray-700/60"
+                }`}
+              >
+                {isHidden ? (
+                  <>
+                    <Eye className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>{lang === "pl" ? "Przywróć tom do widoku" : "Unhide book"}</span>
+                  </>
+                ) : (
+                  <>
+                    <EyeOff className="w-3.5 h-3.5" />
+                    <span>{lang === "pl" ? "Nie interesuje mnie to (Ukryj)" : "Not interested (Hide)"}</span>
+                  </>
+                )}
+              </button>
+            )}
+
+            <button
+              onClick={onClose}
+              className="px-4 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs font-semibold cursor-pointer"
+            >
+              {t.closeBtn}
+            </button>
+          </div>
         </div>
       </div>
     </div>

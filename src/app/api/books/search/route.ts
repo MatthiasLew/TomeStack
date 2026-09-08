@@ -1,20 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
-import { unifiedSearchByQuery } from "@/lib/api/bookProviders";
+import { unifiedSearchByQuery, unifiedSearchByAuthor } from "@/lib/api/bookProviders";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const q = searchParams.get("q") || searchParams.get("query") || "";
-  const limit = parseInt(searchParams.get("limit") || "8", 10);
+  const author = searchParams.get("author") || "";
+  const limit = parseInt(searchParams.get("limit") || "16", 10);
 
-  if (!q.trim()) {
+  if (!q.trim() && !author.trim()) {
     return NextResponse.json(
-      { error: "Parametr 'q' (zapytanie) jest wymagany." },
+      { error: "Parametr 'q' (zapytanie) lub 'author' (autor) jest wymagany." },
       { status: 400 }
     );
   }
 
   try {
-    const results = await unifiedSearchByQuery(q, limit);
+    const results = author.trim()
+      ? await unifiedSearchByAuthor(author.trim(), limit)
+      : await unifiedSearchByQuery(q.trim(), limit);
 
     return NextResponse.json({
       data: results,

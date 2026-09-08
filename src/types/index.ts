@@ -30,7 +30,7 @@ export interface Book {
   title: string;
   volume: number;
   formatType: BindingFormat;
-  cover: string;
+  cover?: string;
   prices: PriceOffer[];
   editions: BookEdition[];
 }
@@ -63,4 +63,6 @@ export interface UserAccount {
   avatar: string;
   ownedBooks: Record<string, string>; // bookId -> editionId
   readingStatus?: Record<string, ReadingStatus>; // bookId -> reading status
+  hiddenBooks?: Record<string, boolean>; // bookId -> isHidden
+  hiddenSeries?: Record<string, boolean>; // seriesId -> isHidden
 }

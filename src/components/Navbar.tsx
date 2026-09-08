@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { BookOpen, Search, Plus, User, LogOut, Camera } from "lucide-react";
+import { BookOpen, Search, Plus, User, LogOut, Camera, Library } from "lucide-react";
 import { UserAccount, Language } from "@/types";
 import { translations } from "@/data/mockData";
 
@@ -13,6 +13,7 @@ interface NavbarProps {
   onLogout: () => void;
   onOpenAddBook: () => void;
   onOpenScanner?: () => void;
+  onOpenAuthorSearch?: () => void;
   searchQuery: string;
   onSearchChange: (q: string) => void;
 }
@@ -25,6 +26,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onLogout,
   onOpenAddBook,
   onOpenScanner,
+  onOpenAuthorSearch,
   searchQuery,
   onSearchChange,
 }) => {
@@ -70,11 +72,25 @@ export const Navbar: React.FC<NavbarProps> = ({
             <button
               onClick={onOpenScanner}
               title={lang === "pl" ? "Skaner kodów kreskowych" : "Barcode camera scanner"}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-brand-500/30 bg-brand-950/40 hover:bg-brand-900/50 text-xs font-semibold text-brand-300 transition shadow"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-brand-500/30 bg-brand-950/40 hover:bg-brand-900/50 text-xs font-semibold text-brand-300 transition shadow cursor-pointer"
             >
               <Camera className="w-3.5 h-3.5 text-brand-400" />
               <span className="hidden sm:inline">
                 {lang === "pl" ? "Skanuj ISBN" : "Scan ISBN"}
+              </span>
+            </button>
+          )}
+
+          {/* Search Author Books via API Button */}
+          {onOpenAuthorSearch && (
+            <button
+              onClick={onOpenAuthorSearch}
+              title={lang === "pl" ? "Szukaj autora i dodaj książki z API" : "Search author and import books from API"}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-purple-500/40 bg-purple-950/40 hover:bg-purple-900/50 text-xs font-semibold text-purple-300 transition shadow cursor-pointer"
+            >
+              <Library className="w-3.5 h-3.5 text-purple-400" />
+              <span className="hidden sm:inline">
+                {lang === "pl" ? "Szukaj autora" : "Author Search"}
               </span>
             </button>
           )}

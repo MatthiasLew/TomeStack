@@ -28,6 +28,7 @@ import { AuthorModal } from "@/components/AuthorModal";
 import { AddBookModal } from "@/components/AddBookModal";
 import { AuthModal } from "@/components/AuthModal";
 import { BarcodeScannerModal } from "@/components/BarcodeScannerModal";
+import { AuthorSearchModal } from "@/components/AuthorSearchModal";
 import {
   loadUserShelfFromCloud,
   saveUserBookToCloud,
@@ -83,6 +84,8 @@ export default function Home() {
   const [isAddBookOpen, setIsAddBookOpen] = useState(false);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const [isAuthorSearchOpen, setIsAuthorSearchOpen] = useState(false);
+  const [showHidden, setShowHidden] = useState(false);
 
   // Collapsed series state for large collections
   const [collapsedSeriesIds, setCollapsedSeriesIds] = useState<Set<string>>(new Set());
@@ -217,25 +220,67 @@ export default function Home() {
     setCurrentUser(updatedUser);
   };
 
+  const handleToggleHideBook = (bookId: string) => {
+    if (!currentUser) {
+      setIsAuthOpen(true);
+      return;
+    }
+
+    const currentHidden = { ...(currentUser.hiddenBooks || {}) };
+    if (currentHidden[bookId]) {
+      delete currentHidden[bookId];
+    } else {
+      currentHidden[bookId] = true;
+    }
+
+    const updatedUser = { ...currentUser, hiddenBooks: currentHidden };
+    setCurrentUser(updatedUser);
+  };
+
+  const handleToggleHideSeries = (seriesId: string) => {
+    if (!currentUser) {
+      setIsAuthOpen(true);
+      return;
+    }
+
+    const currentHiddenSeries = { ...(currentUser.hiddenSeries || {}) };
+    if (currentHiddenSeries[seriesId]) {
+      delete currentHiddenSeries[seriesId];
+    } else {
+      currentHiddenSeries[seriesId] = true;
+    }
+
+    const updatedUser = { ...currentUser, hiddenSeries: currentHiddenSeries };
+    setCurrentUser(updatedUser);
+  };
+
+  const hiddenCount = useMemo(() => {
+    const hiddenBooksCount = Object.keys(currentUser?.hiddenBooks || {}).length;
+    const hiddenSeriesCount = Object.keys(currentUser?.hiddenSeries || {}).length;
+    return hiddenBooksCount + hiddenSeriesCount;
+  }, [currentUser]);
+
   const handleAddBook = (data: {
     title: string;
     author: string;
     series: string;
     formatType: BindingFormat;
     isbn?: string;
+    cover?: string;
+    readingStatus?: ReadingStatus;
   }) => {
-    const newBookId = `book-${Date.now()}`;
-    const newEditionId = `ed-${Date.now()}`;
+    const newBookId = `book-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+    const newEditionId = `ed-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
 
     const newBook: Book = {
       id: newBookId,
       title: data.title,
       volume: 1,
       formatType: data.formatType,
-      cover: "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=300&q=80",
+      cover: data.cover || (data.isbn ? `https://covers.openlibrary.org/b/isbn/${data.isbn}-L.jpg?default=false` : undefined),
       prices: [
         {
-          store: "Świat Książki",
+          store: "Księgarnia",
           formatType: data.formatType,
           format: data.formatType === "hardcover" ? "Twarda oprawa" : "Miękka oprawa",
           price: "39,90 zł",
@@ -248,7 +293,7 @@ export default function Home() {
         {
           id: newEditionId,
           formatType: data.formatType,
-          publisher: "Wydawnictwo",
+          publisher: data.series || "Wydawnictwo",
           year: new Date().getFullYear(),
           format: data.formatType === "hardcover" ? "Oprawa twarda" : "Oprawa miękka",
           isbn: data.isbn || "9780000000000",
@@ -257,7 +302,8 @@ export default function Home() {
     };
 
     setSeriesList((prev) => {
-      const existing = prev.find((s) => s.seriesName.toLowerCase() === data.series.toLowerCase());
+      const targetSeriesName = data.series || `Twórczość: ${data.author}`;
+      const existing = prev.find((s) => s.seriesName.toLowerCase() === targetSeriesName.toLowerCase());
       if (existing) {
         return prev.map((s) =>
           s.seriesId === existing.seriesId
@@ -265,12 +311,12 @@ export default function Home() {
             : s
         );
       } else {
-        const newSeriesId = `series-${Date.now()}`;
+        const newSeriesId = `series-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
         return [
           ...prev,
           {
             seriesId: newSeriesId,
-            seriesName: data.series,
+            seriesName: targetSeriesName,
             author: data.author,
             books: [newBook],
           },
@@ -278,18 +324,33 @@ export default function Home() {
       }
     });
 
-    // Auto mark as owned by current user
+    // Auto mark as owned / reading status if user is active
     if (currentUser) {
       handleToggleOwned(newBookId, newEditionId);
+      if (data.readingStatus) {
+        handleUpdateReadingStatus(newBookId, data.readingStatus);
+      }
     }
   };
 
-  // Filter series based on search query
+  // Filter series based on search query and hidden status
   const filteredSeries = useMemo(() => {
-    if (!searchQuery.trim()) return seriesList;
+    let list = seriesList;
+
+    if (!showHidden) {
+      list = list.filter((s) => !currentUser?.hiddenSeries?.[s.seriesId]);
+    } else {
+      list = list.filter((s) => {
+        const isSeriesHidden = Boolean(currentUser?.hiddenSeries?.[s.seriesId]);
+        const hasHiddenBook = s.books.some((b) => currentUser?.hiddenBooks?.[b.id]);
+        return isSeriesHidden || hasHiddenBook;
+      });
+    }
+
+    if (!searchQuery.trim()) return list;
     const q = searchQuery.toLowerCase();
 
-    return seriesList
+    return list
       .map((s) => {
         const matchSeries = s.seriesName.toLowerCase().includes(q);
         const matchAuthor = s.author.toLowerCase().includes(q);
@@ -308,7 +369,7 @@ export default function Home() {
         return null;
       })
       .filter(Boolean) as Series[];
-  }, [seriesList, searchQuery]);
+  }, [seriesList, searchQuery, showHidden, currentUser]);
 
   return (
     <div className="min-h-screen flex flex-col antialiased selection:bg-brand-500 selection:text-white">
@@ -321,6 +382,7 @@ export default function Home() {
         onLogout={() => setCurrentUser(null)}
         onOpenAddBook={() => setIsAddBookOpen(true)}
         onOpenScanner={() => setIsScannerOpen(true)}
+        onOpenAuthorSearch={() => setIsAuthorSearchOpen(true)}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
       />
@@ -359,6 +421,9 @@ export default function Home() {
           activeTab={activeTab}
           onSetActiveTab={setActiveTab}
           lang={lang}
+          showHidden={showHidden}
+          onToggleShowHidden={() => setShowHidden((prev) => !prev)}
+          hiddenCount={hiddenCount}
         />
 
         {/* Content based on Active Tab */}
@@ -414,6 +479,7 @@ export default function Home() {
                   formatFilter={formatFilter}
                   statusFilter={statusFilter}
                   lang={lang}
+                  showHidden={showHidden}
                   isCollapsed={collapsedSeriesIds.has(series.seriesId)}
                   onToggleCollapse={() => handleToggleSeriesCollapse(series.seriesId)}
                   onOpenBookModal={(book, s) =>
@@ -422,6 +488,8 @@ export default function Home() {
                   onOpenAuthorModal={(author) => setActiveAuthorName(author)}
                   onToggleOwned={handleToggleOwned}
                   onUpdateReadingStatus={handleUpdateReadingStatus}
+                  onToggleHideBook={handleToggleHideBook}
+                  onToggleHideSeries={handleToggleHideSeries}
                 />
               ))
             )}
@@ -438,6 +506,7 @@ export default function Home() {
               setActiveBookModal({ book, series: s })
             }
             onToggleOwned={handleToggleOwned}
+            onToggleHideBook={handleToggleHideBook}
           />
         )}
 
@@ -488,6 +557,7 @@ export default function Home() {
                 formatFilter="all"
                 statusFilter="all"
                 lang={lang}
+                showHidden={showHidden}
                 isCollapsed={collapsedSeriesIds.has(series.seriesId)}
                 onToggleCollapse={() => handleToggleSeriesCollapse(series.seriesId)}
                 onOpenBookModal={(book, s) =>
@@ -496,6 +566,8 @@ export default function Home() {
                 onOpenAuthorModal={(author) => setActiveAuthorName(author)}
                 onToggleOwned={handleToggleOwned}
                 onUpdateReadingStatus={handleUpdateReadingStatus}
+                onToggleHideBook={handleToggleHideBook}
+                onToggleHideSeries={handleToggleHideSeries}
               />
             ))}
           </div>
@@ -514,6 +586,7 @@ export default function Home() {
           onToggleOwned={handleToggleOwned}
           onOpenAuthor={(author) => setActiveAuthorName(author)}
           onUpdateReadingStatus={handleUpdateReadingStatus}
+          onToggleHideBook={handleToggleHideBook}
         />
       )}
 
@@ -535,6 +608,15 @@ export default function Home() {
           lang={lang}
           onClose={() => setIsAddBookOpen(false)}
           onAddBook={handleAddBook}
+        />
+      )}
+
+      {/* Live Author Search & Import Modal */}
+      {isAuthorSearchOpen && (
+        <AuthorSearchModal
+          lang={lang}
+          onClose={() => setIsAuthorSearchOpen(false)}
+          onAddBookToShelf={handleAddBook}
         />
       )}
 

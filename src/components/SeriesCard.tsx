@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { Series, Book, FormatFilter, StatusFilter, Language, UserAccount, ReadingStatus } from "@/types";
 import { translations } from "@/data/mockData";
-import { Check, Plus, ChevronDown, ChevronUp } from "lucide-react";
+import { Check, Plus, ChevronDown, ChevronUp, Eye, EyeOff } from "lucide-react";
 import { BookCover } from "./BookCover";
 
 interface SeriesCardProps {
@@ -16,6 +16,9 @@ interface SeriesCardProps {
   onOpenAuthorModal: (authorName: string) => void;
   onToggleOwned: (bookId: string, defaultEditionId: string) => void;
   onUpdateReadingStatus?: (bookId: string, status: ReadingStatus) => void;
+  onToggleHideBook?: (bookId: string) => void;
+  onToggleHideSeries?: (seriesId: string) => void;
+  showHidden?: boolean;
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
 }
@@ -30,6 +33,9 @@ export const SeriesCard: React.FC<SeriesCardProps> = ({
   onOpenAuthorModal,
   onToggleOwned,
   onUpdateReadingStatus,
+  onToggleHideBook,
+  onToggleHideSeries,
+  showHidden = false,
   isCollapsed,
   onToggleCollapse,
 }) => {
@@ -53,9 +59,20 @@ export const SeriesCard: React.FC<SeriesCardProps> = ({
   const percent = Math.round((ownedCount / totalBooks) * 100);
   const isComplete = percent === 100;
 
+  const isSeriesHidden = Boolean(currentUser?.hiddenSeries?.[series.seriesId]);
+  if (!showHidden && isSeriesHidden) return null;
+  if (showHidden && !isSeriesHidden && series.books.every((b) => !currentUser?.hiddenBooks?.[b.id])) {
+    return null;
+  }
+
   // Filter books inside the series
   const visibleBooks = series.books.filter((book) => {
     const isOwned = Boolean(currentUser?.ownedBooks && currentUser.ownedBooks[book.id]);
+    const isHidden = Boolean(currentUser?.hiddenBooks?.[book.id]);
+
+    // Hidden filter
+    if (!showHidden && isHidden) return false;
+    if (showHidden && !isHidden && !isSeriesHidden) return false;
 
     // Format filter
     if (formatFilter !== "all" && book.formatType !== formatFilter) {
@@ -71,7 +88,7 @@ export const SeriesCard: React.FC<SeriesCardProps> = ({
     return true;
   });
 
-  if (visibleBooks.length === 0 && (formatFilter !== "all" || statusFilter !== "all")) {
+  if (visibleBooks.length === 0 && (formatFilter !== "all" || statusFilter !== "all" || showHidden)) {
     return null;
   }
 
@@ -90,6 +107,11 @@ export const SeriesCard: React.FC<SeriesCardProps> = ({
                 {collapsed ? <ChevronDown className="w-4 h-4 inline" /> : <ChevronUp className="w-4 h-4 inline" />}
               </span>
             </h3>
+            {isSeriesHidden && (
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-500/20 text-rose-300 border border-rose-500/40">
+                🚫 {lang === "pl" ? "Cykl ukryty" : "Series hidden"}
+              </span>
+            )}
             {isComplete ? (
               <span className="px-2.5 py-0.5 rounded-full text-xs font-extrabold bg-amber-500/20 text-amber-300 border border-amber-500/40">
                 {t.completeSeries}
@@ -132,6 +154,28 @@ export const SeriesCard: React.FC<SeriesCardProps> = ({
               />
             </div>
           </div>
+
+          {/* Hide/Unhide Series Button */}
+          {onToggleHideSeries && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleHideSeries(series.seriesId);
+              }}
+              className={`p-2 rounded-xl text-xs font-semibold transition flex items-center gap-1 shrink-0 cursor-pointer ${
+                isSeriesHidden
+                  ? "bg-rose-500/25 text-rose-300 border border-rose-500/40 hover:bg-rose-500 hover:text-white"
+                  : "bg-gray-800/60 hover:bg-rose-950/40 text-gray-400 hover:text-rose-300 border border-gray-700/60"
+              }`}
+              title={
+                isSeriesHidden
+                  ? (lang === "pl" ? "Przywróć ten cykl do widoku" : "Unhide this series")
+                  : (lang === "pl" ? "Nie interesuje mnie ten cykl (Ukryj)" : "Not interested in this series (Hide)")
+              }
+            >
+              {isSeriesHidden ? <Eye className="w-4 h-4 text-emerald-400" /> : <EyeOff className="w-4 h-4" />}
+            </button>
+          )}
 
           {/* Collapse/Expand Toggle Button */}
           <button
@@ -237,6 +281,12 @@ export const SeriesCard: React.FC<SeriesCardProps> = ({
                       ⭐ {lang === "pl" ? "Chcę" : "Wishlist"}
                     </span>
                   )}
+                  {/* Hidden badge on cover */}
+                  {currentUser?.hiddenBooks?.[book.id] && (
+                    <span className="absolute top-8 left-2 px-1.5 py-0.5 rounded bg-rose-900/90 text-rose-200 text-[10px] font-bold border border-rose-600/50 flex items-center gap-1 shadow">
+                      🚫 {lang === "pl" ? "Ukryta" : "Hidden"}
+                    </span>
+                  )}
                 </div>
 
                 {/* Title */}
@@ -272,6 +322,32 @@ export const SeriesCard: React.FC<SeriesCardProps> = ({
                 )}
 
                 <div className="flex items-center gap-1">
+                  {onToggleHideBook && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onToggleHideBook(book.id);
+                      }}
+                      className={`p-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1 ${
+                        currentUser?.hiddenBooks?.[book.id]
+                          ? "bg-rose-500/25 text-rose-300 border border-rose-500/40 hover:bg-rose-500 hover:text-white"
+                          : "bg-gray-800 text-gray-400 hover:text-rose-300 hover:bg-rose-950/40"
+                      }`}
+                      title={
+                        currentUser?.hiddenBooks?.[book.id]
+                          ? (lang === "pl" ? "Przywróć tom do widoku" : "Unhide book")
+                          : (lang === "pl" ? "Nie interesuje mnie to (Ukryj tom)" : "Not interested (Hide book)")
+                      }
+                    >
+                      {currentUser?.hiddenBooks?.[book.id] ? (
+                        <Eye className="w-3.5 h-3.5 text-emerald-400" />
+                      ) : (
+                        <EyeOff className="w-3.5 h-3.5" />
+                      )}
+                    </button>
+                  )}
+
                   {onUpdateReadingStatus && isOwned && (
                     <button
                       type="button"

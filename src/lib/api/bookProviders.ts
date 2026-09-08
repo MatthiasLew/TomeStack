@@ -426,3 +426,123 @@ export async function unifiedSearchByQuery(
 
   return results.slice(0, limit);
 }
+
+/**
+ * Searches Open Library specifically by author name.
+ */
+export async function searchOpenLibraryByAuthor(
+  author: string,
+  limit: number = 10
+): Promise<UnifiedBookMetadata[]> {
+  try {
+    const url = `https://openlibrary.org/search.json?author=${encodeURIComponent(author)}&limit=${limit}`;
+    const res = await fetch(url, {
+      headers: { Accept: "application/json" },
+      next: { revalidate: 86400 },
+    });
+
+    if (!res.ok) return [];
+    const data = await res.json();
+    const docs: OpenLibrarySearchDoc[] = data.docs || [];
+
+    return docs.map((doc) => {
+      const firstIsbn = doc.isbn ? doc.isbn[0] : undefined;
+      const coverUrl = doc.cover_i
+        ? `https://covers.openlibrary.org/b/id/${doc.cover_i}-L.jpg?default=false`
+        : firstIsbn
+        ? `https://covers.openlibrary.org/b/isbn/${firstIsbn}-L.jpg?default=false`
+        : undefined;
+
+      return {
+        title: doc.title,
+        author: doc.author_name ? doc.author_name[0] : author,
+        publisher: doc.publisher ? doc.publisher[0] : undefined,
+        publicationYear: doc.first_publish_year,
+        isbn: firstIsbn,
+        formatType: "paperback",
+        coverUrl,
+        source: "openlibrary",
+      };
+    });
+  } catch (error) {
+    console.warn("Open Library author search error:", error);
+    return [];
+  }
+}
+
+/**
+ * Searches across BN, Open Library and Google Books by author name to fetch complete bibliography with covers.
+ */
+export async function unifiedSearchByAuthor(
+  author: string,
+  limit: number = 24
+): Promise<UnifiedBookMetadata[]> {
+  const [bnResult, olResult, gbResult] = await Promise.allSettled([
+    fetchBnByQuery({ author, limit }),
+    searchOpenLibraryByAuthor(author, limit),
+    searchGoogleBooksByQuery(`inauthor:${author}`, limit),
+  ]);
+
+  const results: UnifiedBookMetadata[] = [];
+  const seenTitles = new Set<string>();
+
+  // Helper to normalize title for deduplication
+  const normalize = (t: string) =>
+    t.toLowerCase().replace(/[^a-z0-9ąćęłńóśźż]/gi, "").trim();
+
+  // 1. Process BN books
+  if (bnResult.status === "fulfilled") {
+    for (const b of bnResult.value) {
+      const key = normalize(b.title);
+      if (!key || seenTitles.has(key)) continue;
+      seenTitles.add(key);
+      results.push({
+        title: b.title,
+        author: b.author || author,
+        publisher: b.publisher,
+        publicationYear: b.publicationYear,
+        isbn: b.isbn || undefined,
+        formatType: b.formatType,
+        coverUrl: b.isbn ? `https://covers.openlibrary.org/b/isbn/${b.isbn}-L.jpg?default=false` : undefined,
+        source: "bn",
+      });
+    }
+  }
+
+  // 2. Process Google Books (often provides highest quality covers)
+  if (gbResult.status === "fulfilled") {
+    for (const b of gbResult.value) {
+      const key = normalize(b.title);
+      if (!key) continue;
+      if (seenTitles.has(key)) {
+        // If we already have the title but no cover, update the cover
+        const existing = results.find((r) => normalize(r.title) === key);
+        if (existing && !existing.coverUrl && b.coverUrl) {
+          existing.coverUrl = b.coverUrl;
+        }
+        continue;
+      }
+      seenTitles.add(key);
+      results.push(b);
+    }
+  }
+
+  // 3. Process Open Library
+  if (olResult.status === "fulfilled") {
+    for (const b of olResult.value) {
+      const key = normalize(b.title);
+      if (!key) continue;
+      if (seenTitles.has(key)) {
+        const existing = results.find((r) => normalize(r.title) === key);
+        if (existing && !existing.coverUrl && b.coverUrl) {
+          existing.coverUrl = b.coverUrl;
+        }
+        continue;
+      }
+      seenTitles.add(key);
+      results.push(b);
+    }
+  }
+
+  return results.slice(0, limit);
+}

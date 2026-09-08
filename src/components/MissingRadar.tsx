@@ -13,6 +13,7 @@ import {
   Sparkles,
   Truck,
   TrendingDown,
+  EyeOff,
 } from "lucide-react";
 
 interface MissingRadarProps {
@@ -22,6 +23,7 @@ interface MissingRadarProps {
   lang: Language;
   onOpenBookModal: (book: Book, series: Series) => void;
   onToggleOwned: (bookId: string, defaultEditionId: string) => void;
+  onToggleHideBook?: (bookId: string) => void;
 }
 
 export const MissingRadar: React.FC<MissingRadarProps> = ({
@@ -31,19 +33,22 @@ export const MissingRadar: React.FC<MissingRadarProps> = ({
   lang,
   onOpenBookModal,
   onToggleOwned,
+  onToggleHideBook,
 }) => {
   const t = translations[lang];
   const [selectedSeriesFilter, setSelectedSeriesFilter] = useState<string>("all");
 
-  // Collect all missing books across all series
+  // Collect all missing books across all series (excluding hidden)
   const missingItems: { book: Book; series: Series }[] = [];
 
   seriesList.forEach((s) => {
+    if (currentUser?.hiddenSeries?.[s.seriesId]) return;
     if (selectedSeriesFilter !== "all" && s.seriesId !== selectedSeriesFilter) {
       return;
     }
 
     s.books.forEach((b) => {
+      if (currentUser?.hiddenBooks?.[b.id]) return;
       const isOwned = Boolean(currentUser?.ownedBooks && currentUser.ownedBooks[b.id]);
       if (!isOwned) {
         if (formatFilter === "all" || b.formatType === formatFilter) {
@@ -264,6 +269,16 @@ export const MissingRadar: React.FC<MissingRadarProps> = ({
                           <span>Kup</span>
                           <ExternalLink className="w-3 h-3" />
                         </a>
+                      )}
+                      {onToggleHideBook && (
+                        <button
+                          type="button"
+                          onClick={() => onToggleHideBook(book.id)}
+                          className="p-1.5 rounded-lg bg-gray-800/80 hover:bg-rose-950/50 text-gray-400 hover:text-rose-300 transition"
+                          title={lang === "pl" ? "Nie interesuje mnie to (Ukryj z radaru)" : "Not interested (Hide)"}
+                        >
+                          <EyeOff className="w-3.5 h-3.5" />
+                        </button>
                       )}
                       <button
                         onClick={() =>
