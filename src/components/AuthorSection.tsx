@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { Series, Book, FormatFilter, StatusFilter, Language, UserAccount, ReadingStatus } from "@/types";
 import { authorsDatabase } from "@/data/mockData";
 import { SeriesCard } from "./SeriesCard";
-import { ChevronDown, ChevronUp, Library } from "lucide-react";
+import { ChevronDown, ChevronUp, Library, Loader2, Sparkles } from "lucide-react";
 
 interface AuthorSectionProps {
   authorName: string;
@@ -19,6 +19,8 @@ interface AuthorSectionProps {
   onOpenBookModal: (book: Book, series: Series) => void;
   onOpenAuthorModal: (authorName: string) => void;
   onOpenAuthorSearch?: (authorName: string) => void;
+  onLoadFullBibliography?: (authorName: string) => Promise<void>;
+  isLoadingBio?: boolean;
   onToggleOwned: (bookId: string, defaultEditionId: string) => void;
   onUpdateReadingStatus?: (bookId: string, status: ReadingStatus) => void;
   onToggleHideBook?: (bookId: string) => void;
@@ -38,6 +40,8 @@ export const AuthorSection: React.FC<AuthorSectionProps> = ({
   onOpenBookModal,
   onOpenAuthorModal,
   onOpenAuthorSearch,
+  onLoadFullBibliography,
+  isLoadingBio = false,
   onToggleOwned,
   onUpdateReadingStatus,
   onToggleHideBook,
@@ -118,15 +122,32 @@ export const AuthorSection: React.FC<AuthorSectionProps> = ({
             </div>
           </div>
 
-          {/* Quick link to load more books of this author */}
+          {/* Quick link to load all books of this author */}
+          {onLoadFullBibliography && (
+            <button
+              onClick={() => onLoadFullBibliography(authorName)}
+              disabled={isLoadingBio}
+              className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-600/30 to-brand-600/30 hover:from-amber-600/50 hover:to-brand-600/50 text-amber-300 hover:text-white border border-amber-500/40 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-md"
+              title={lang === "pl" ? "Wczytaj całą bibliografię tego autora do swojej półki" : "Load all books"}
+            >
+              {isLoadingBio ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-400" />
+              ) : (
+                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+              )}
+              <span>{lang === "pl" ? "Wczytaj pozostałe tomy" : "Load all books"}</span>
+            </button>
+          )}
+
+          {/* Quick link to open search modal */}
           {onOpenAuthorSearch && (
             <button
               onClick={() => onOpenAuthorSearch(authorName)}
               className="px-2.5 py-1.5 rounded-xl bg-gray-800 hover:bg-brand-900/40 text-gray-300 hover:text-brand-300 border border-gray-700/60 text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer shadow-sm"
-              title={lang === "pl" ? "Pobierz więcej książek tego autora z BN" : "Fetch more books"}
+              title={lang === "pl" ? "Przeszukaj bazę online dla tego autora" : "Search online catalog"}
             >
               <Library className="w-3.5 h-3.5 text-brand-400" />
-              <span className="hidden md:inline">{lang === "pl" ? "Pobierz dzieła" : "Fetch books"}</span>
+              <span className="hidden md:inline">{lang === "pl" ? "Katalog online" : "Catalog"}</span>
             </button>
           )}
 
@@ -147,6 +168,28 @@ export const AuthorSection: React.FC<AuthorSectionProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Helper Callout if author has very few books on shelf */}
+      {totalBooks <= 3 && onLoadFullBibliography && (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3.5 rounded-2xl bg-gradient-to-r from-brand-950/60 via-gray-900/90 to-amber-950/40 border border-brand-500/40 text-xs shadow-lg">
+          <div className="flex items-center gap-2.5 text-gray-300">
+            <span className="text-base">💡</span>
+            <span>
+              {lang === "pl"
+                ? `Masz na półce tylko ${totalBooks} ${totalBooks === 1 ? "tom" : "tomy"} ${authorName}. Chcesz jednym kliknięciem wczytać pozostałe dzieła autora do śledzenia?`
+                : `You only have ${totalBooks} book(s) by ${authorName}. Want to load all other books to track?`}
+            </span>
+          </div>
+          <button
+            onClick={() => onLoadFullBibliography(authorName)}
+            disabled={isLoadingBio}
+            className="px-3.5 py-1.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-bold transition flex items-center gap-1.5 shrink-0 cursor-pointer shadow-md"
+          >
+            {isLoadingBio ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5 text-amber-300" />}
+            <span>{lang === "pl" ? "Wczytaj wszystkie tomy" : "Load full bibliography"}</span>
+          </button>
+        </div>
+      )}
 
       {/* Level 2 & 3: Series and Books under this Author */}
       {!isAuthorCollapsed && (

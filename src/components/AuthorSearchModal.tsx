@@ -152,6 +152,9 @@ export const AuthorSearchModal: React.FC<AuthorSearchModalProps> = ({
       });
     });
     setAddedIds(nextSet);
+    setTimeout(() => {
+      onClose();
+    }, 450);
   };
 
   return (

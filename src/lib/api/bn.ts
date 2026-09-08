@@ -85,6 +85,7 @@ export async function fetchBnByIsbn(isbn: string): Promise<NormalizedBnBook | nu
     const res = await fetch(url, {
       headers: { Accept: "application/json" },
       next: { revalidate: 3600 },
+      signal: AbortSignal.timeout(3000),
     });
 
     if (!res.ok) return null;
@@ -130,6 +131,7 @@ export async function fetchBnByQuery(params: {
     const res = await fetch(url, {
       headers: { Accept: "application/json" },
       next: { revalidate: 3600 },
+      signal: AbortSignal.timeout(3000),
     });
 
     if (!res.ok) return [];

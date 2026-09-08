@@ -110,6 +110,7 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState<ActiveTab>("series");
   const [searchQuery, setSearchQuery] = useState("");
   const [quickAuthorInput, setQuickAuthorInput] = useState("");
+  const [loadingAuthorBio, setLoadingAuthorBio] = useState<string | null>(null);
 
   // Modals state
   const [activeBookModal, setActiveBookModal] = useState<{
@@ -370,6 +371,97 @@ export default function Home() {
     }
   };
 
+  const handleImportAuthorBibliography = async (authorName: string) => {
+    setLoadingAuthorBio(authorName);
+    try {
+      const res = await fetch(`/api/books/search?author=${encodeURIComponent(authorName)}&limit=30`);
+      if (!res.ok) return;
+      const json = await res.json();
+      const booksToAdd = json.data || [];
+
+      if (booksToAdd.length === 0) return;
+
+      setSeriesList((prev) => {
+        const authorLower = authorName.toLowerCase().trim();
+        const existingSeries = prev.find(
+          (s) => s.author.toLowerCase().trim() === authorLower
+        );
+
+        const targetSeriesName = existingSeries?.seriesName || `Dzieła i powieści (${authorName})`;
+        const targetSeriesId =
+          existingSeries?.seriesId ||
+          `series-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+
+        const existingBooks = existingSeries?.books || [];
+        const existingTitles = new Set(existingBooks.map((b) => b.title.toLowerCase().trim()));
+
+        const newBooksFormatted: Book[] = [];
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        booksToAdd.forEach((b: any) => {
+          const normTitle = (b.title || "").toLowerCase().trim();
+          if (!normTitle || existingTitles.has(normTitle)) return;
+          existingTitles.add(normTitle);
+
+          const newBookId = `book-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+          const newEditionId = `ed-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+
+          newBooksFormatted.push({
+            id: newBookId,
+            title: b.title,
+            volume: existingBooks.length + newBooksFormatted.length + 1,
+            formatType: b.formatType || "paperback",
+            cover: b.coverUrl,
+            prices: [
+              {
+                store: "Księgarnia",
+                formatType: b.formatType || "paperback",
+                format: b.formatType === "hardcover" ? "Twarda oprawa" : "Miękka oprawa",
+                price: "29,90 zł",
+                shipping: "Dostępne",
+                isBest: true,
+                url: "https://www.swiatksiazki.pl",
+              },
+            ],
+            editions: [
+              {
+                id: newEditionId,
+                formatType: b.formatType || "paperback",
+                publisher: b.publisher || "Wydawnictwo",
+                year: b.publicationYear || new Date().getFullYear(),
+                format: b.formatType === "hardcover" ? "Oprawa twarda" : "Oprawa miękka",
+                isbn: b.isbn || "9780000000000",
+              },
+            ],
+          });
+        });
+
+        if (newBooksFormatted.length === 0) return prev;
+
+        if (existingSeries) {
+          return prev.map((s) =>
+            s.seriesId === existingSeries.seriesId
+              ? { ...s, books: [...s.books, ...newBooksFormatted] }
+              : s
+          );
+        } else {
+          return [
+            ...prev,
+            {
+              seriesId: targetSeriesId,
+              seriesName: targetSeriesName,
+              author: authorName,
+              books: newBooksFormatted,
+            },
+          ];
+        }
+      });
+    } catch (err) {
+      console.error("Error importing author bibliography:", err);
+    } finally {
+      setLoadingAuthorBio(null);
+    }
+  };
+
   // Filter series based on search query and hidden status
   const filteredSeries = useMemo(() => {
     let list = seriesList;
@@ -549,21 +641,37 @@ export default function Home() {
                   <button
                     onClick={() => {
                       if (quickAuthorInput.trim()) {
+                        handleImportAuthorBibliography(quickAuthorInput.trim());
+                      }
+                    }}
+                    disabled={loadingAuthorBio === quickAuthorInput.trim()}
+                    className="px-4 py-3 rounded-xl bg-gradient-to-r from-amber-600 to-brand-600 hover:from-amber-500 hover:to-brand-500 text-white text-xs sm:text-sm font-bold transition flex items-center gap-1.5 shadow-lg shadow-brand-900/40 cursor-pointer shrink-0"
+                    title={lang === "pl" ? "Wczytaj całą bibliografię autora" : "Import all books"}
+                  >
+                    <span>⚡</span>
+                    <span>{lang === "pl" ? "Dodaj całą twórczość" : "Import all"}</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (quickAuthorInput.trim()) {
                         setAuthorSearchInitialQuery(quickAuthorInput.trim());
                         setIsAuthorSearchOpen(true);
                       }
                     }}
-                    className="px-5 py-3 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-sm font-bold transition flex items-center gap-2 shadow-lg shadow-brand-900/40 cursor-pointer shrink-0"
+                    className="px-3.5 py-3 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer shrink-0 border border-gray-700"
+                    title={lang === "pl" ? "Przeglądaj książki pojedynczo" : "Browse books"}
                   >
-                    <Search className="w-4 h-4" />
-                    <span>{lang === "pl" ? "Wyszukaj" : "Search"}</span>
+                    <Search className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">{lang === "pl" ? "Przeglądaj" : "Browse"}</span>
                   </button>
                 </div>
 
                 {/* Popular author chips */}
                 <div className="pt-2">
-                  <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold mb-2">
-                    {lang === "pl" ? "Szybki start – popularni autorzy:" : "Quick start – popular authors:"}
+                  <p className="text-xs text-gray-400 font-semibold mb-2.5">
+                    {lang === "pl"
+                      ? "⚡ Kliknij autora, aby od razu załadować wszystkie jego książki do śledzenia:"
+                      : "⚡ Click an author to instantly track all their books:"}
                   </p>
                   <div className="flex flex-wrap justify-center gap-2">
                     {[
@@ -576,13 +684,16 @@ export default function Home() {
                     ].map((author) => (
                       <button
                         key={author}
-                        onClick={() => {
-                          setAuthorSearchInitialQuery(author);
-                          setIsAuthorSearchOpen(true);
-                        }}
-                        className="px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-800/80 hover:bg-brand-600/30 text-gray-300 hover:text-brand-300 border border-gray-700 hover:border-brand-500/50 transition cursor-pointer"
+                        onClick={() => handleImportAuthorBibliography(author)}
+                        disabled={loadingAuthorBio === author}
+                        className="px-3.5 py-2 rounded-xl text-xs font-bold bg-gray-800/90 hover:bg-brand-600 text-gray-200 hover:text-white border border-gray-700 hover:border-brand-500 transition cursor-pointer flex items-center gap-1.5 shadow"
+                        title={lang === "pl" ? `Wczytaj całą bibliografię ${author}` : `Load all books by ${author}`}
                       >
-                        ✍️ {author}
+                        <span>✍️</span>
+                        <span>{author}</span>
+                        <span className="text-[10px] text-brand-300 font-extrabold ml-1">
+                          {loadingAuthorBio === author ? "..." : "+ Wszystkie tomy"}
+                        </span>
                       </button>
                     ))}
                   </div>
@@ -690,6 +801,8 @@ export default function Home() {
                         setAuthorSearchInitialQuery(author);
                         setIsAuthorSearchOpen(true);
                       }}
+                      onLoadFullBibliography={handleImportAuthorBibliography}
+                      isLoadingBio={loadingAuthorBio === group.authorName}
                       onToggleOwned={handleToggleOwned}
                       onUpdateReadingStatus={handleUpdateReadingStatus}
                       onToggleHideBook={handleToggleHideBook}
@@ -791,6 +904,8 @@ export default function Home() {
                       setAuthorSearchInitialQuery(author);
                       setIsAuthorSearchOpen(true);
                     }}
+                    onLoadFullBibliography={handleImportAuthorBibliography}
+                    isLoadingBio={loadingAuthorBio === group.authorName}
                     onToggleOwned={handleToggleOwned}
                     onUpdateReadingStatus={handleUpdateReadingStatus}
                     onToggleHideBook={handleToggleHideBook}
