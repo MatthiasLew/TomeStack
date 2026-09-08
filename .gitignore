@@ -8,15 +8,11 @@ node_modules/
 out/
 build/
 dist/
+*.tsbuildinfo
 
 # AI Dev tools local state & cache
-.ai/logs/
-.ai/reports/
-.ai/context/
-.ai/cache/
-.ai/runtime/
-.ai/tmp/
-.ai/performance/
+.ai/
+temp-app/
 
 # Environment files
 .env
