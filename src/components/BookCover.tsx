@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { BookOpen } from "lucide-react";
 
 interface BookCoverProps {
@@ -17,59 +17,90 @@ export const BookCover: React.FC<BookCoverProps> = ({
   title,
   className = "w-full h-full object-cover",
 }) => {
-  const [errorCount, setErrorCount] = useState(0);
+  const [candidateIndex, setCandidateIndex] = useState(0);
+  const [isLoaded, setIsLoaded] = useState(false);
+  const [hasFailedAll, setHasFailedAll] = useState(false);
 
-  // Generate primary and fallback URLs
   const cleanIsbn = isbn?.replace(/[^0-9X]/gi, "");
 
-  const candidateUrls: string[] = [];
+  // Build unique candidate cover URLs
+  const candidateUrls = useMemo(() => {
+    const urls: string[] = [];
+    const seen = new Set<string>();
 
-  // Priority 1: Explicitly provided valid cover (ignoring legacy unsplash placeholders)
-  if (src && !src.includes("unsplash.com")) {
-    candidateUrls.push(src);
-  }
+    const add = (u?: string) => {
+      if (!u || seen.has(u) || u.includes("unsplash.com")) return;
+      seen.add(u);
+      urls.push(u);
+    };
 
-  // Priority 2: Open Library Large cover CDN with default=false (triggers 404 when missing instead of blank 1x1 gif)
-  if (cleanIsbn) {
-    candidateUrls.push(`https://covers.openlibrary.org/b/isbn/${cleanIsbn}-L.jpg?default=false`);
-    // Priority 3: Google Books dynamic cover CDN
-    candidateUrls.push(`https://books.google.com/books/content?vid=isbn${cleanIsbn}&printsec=frontcover&img=1&zoom=1`);
-    // Priority 4: Open Library Medium cover CDN
-    candidateUrls.push(`https://covers.openlibrary.org/b/isbn/${cleanIsbn}-M.jpg?default=false`);
-  }
+    add(src);
+    if (cleanIsbn) {
+      add(`https://covers.openlibrary.org/b/isbn/${cleanIsbn}-L.jpg?default=false`);
+      add(`https://books.google.com/books/content?vid=isbn${cleanIsbn}&printsec=frontcover&img=1&zoom=1`);
+      add(`https://covers.openlibrary.org/b/isbn/${cleanIsbn}-M.jpg?default=false`);
+    }
 
-  const currentUrl = candidateUrls[errorCount];
+    return urls;
+  }, [src, cleanIsbn]);
 
-  if (!currentUrl || errorCount >= candidateUrls.length) {
-    // High-quality typographic hardcover spine & cover fallback
-    return (
-      <div
-        className={`w-full h-full bg-gradient-to-br from-slate-900 via-gray-900 to-brand-950 p-3.5 flex flex-col justify-between items-center text-center select-none border border-gray-800 shadow-inner ${className}`}
-      >
-        <div className="w-8 h-8 rounded-full bg-brand-500/15 text-brand-400 flex items-center justify-center mt-1 border border-brand-500/20">
-          <BookOpen className="w-4 h-4" />
+  const currentUrl = candidateUrls[candidateIndex];
+
+  const handleImgError = () => {
+    if (candidateIndex + 1 < candidateUrls.length) {
+      setCandidateIndex((prev) => prev + 1);
+    } else {
+      setHasFailedAll(true);
+    }
+  };
+
+  const handleImgLoad = () => {
+    setIsLoaded(true);
+  };
+
+  return (
+    <div className={`relative w-full h-full overflow-hidden select-none bg-slate-950 ${className}`}>
+      {/* 1. Base Layer: Always-rendered Luxury Hardcover Typographic Cover */}
+      <div className="absolute inset-0 w-full h-full bg-gradient-to-br from-slate-900 via-gray-900 to-brand-950/70 p-3.5 flex flex-col justify-between items-center text-center border-l-2 border-brand-500/30 shadow-inner">
+        {/* Top Ornament */}
+        <div className="w-full flex items-center justify-between opacity-50 text-[8px] font-mono tracking-widest text-brand-400">
+          <span>◆</span>
+          <span className="uppercase">TOMESTACK</span>
+          <span>◆</span>
         </div>
-        <div className="my-auto px-1">
-          <p className="text-xs font-bold font-serif text-gray-100 line-clamp-3 leading-snug">
+
+        {/* Center Title & Emblem */}
+        <div className="my-auto px-1 flex flex-col items-center gap-2">
+          <div className="w-8 h-8 rounded-full bg-brand-500/15 text-brand-400 flex items-center justify-center border border-brand-500/30 shadow-sm">
+            <BookOpen className="w-4 h-4" />
+          </div>
+          <p className="text-xs font-bold font-serif text-gray-100 line-clamp-3 leading-snug tracking-wide">
             {title}
           </p>
         </div>
-        <div className="w-full pt-1.5 border-t border-gray-800/80 flex items-center justify-between text-[9px] text-gray-500 font-mono">
-          <span>TOMESTACK</span>
+
+        {/* Bottom Spine Details */}
+        <div className="w-full pt-1.5 border-t border-gray-800/80 flex items-center justify-between text-[9px] text-gray-400 font-mono">
+          <span className="text-[8px] text-brand-400/80">CANON</span>
           <span>{cleanIsbn ? `#${cleanIsbn.slice(-4)}` : "EDITION"}</span>
         </div>
       </div>
-    );
-  }
 
-  return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      src={currentUrl}
-      alt={title}
-      loading="lazy"
-      onError={() => setErrorCount((prev) => prev + 1)}
-      className={className}
-    />
+      {/* 2. Dynamic Image Layer: Smoothly fades in once fully downloaded and validated */}
+      {!hasFailedAll && currentUrl && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={currentUrl}
+          alt=""
+          aria-hidden="true"
+          loading="lazy"
+          onLoad={handleImgLoad}
+          onError={handleImgError}
+          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${
+            isLoaded ? "opacity-100" : "opacity-0 pointer-events-none"
+          }`}
+        />
+      )}
+    </div>
   );
 };

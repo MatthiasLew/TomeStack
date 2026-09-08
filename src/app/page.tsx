@@ -7,6 +7,7 @@ import {
   StatusFilter,
   ActiveTab,
   Book,
+  BookEdition,
   Series,
   UserAccount,
   BindingFormat,
@@ -30,11 +31,80 @@ import { AuthModal } from "@/components/AuthModal";
 import { BarcodeScannerModal } from "@/components/BarcodeScannerModal";
 import { AuthorSearchModal } from "@/components/AuthorSearchModal";
 import { EmptyLibraryHero } from "@/components/EmptyLibraryHero";
+import { canonicalizeBookTitle, cleanDisplayTitle } from "@/lib/api/bookProviders";
 import {
   loadUserShelfFromCloud,
   saveUserBookToCloud,
   removeUserBookFromCloud,
 } from "@/lib/supabase/shelfSync";
+
+/**
+ * Consolidates series books so that any duplicates representing the same literary work
+ * are automatically merged into a single card with multiple editions.
+ */
+function consolidateSeriesList(list: Series[]): Series[] {
+  return list.map((series) => {
+    const canonicalMap = new Map<string, Book>();
+
+    for (const book of series.books) {
+      const displayTitle = cleanDisplayTitle(book.title);
+      const key = canonicalizeBookTitle(displayTitle);
+      if (!key) continue;
+
+      const existing = canonicalMap.get(key);
+      if (!existing) {
+        canonicalMap.set(key, {
+          ...book,
+          title: displayTitle,
+        });
+      } else {
+        // Merge editions (deduplicating by ISBN or format/publisher)
+        const existingIsbns = new Set(existing.editions.map((e) => e.isbn).filter(Boolean));
+        const mergedEditions = [...existing.editions];
+        for (const ed of book.editions) {
+          if (!ed.isbn || !existingIsbns.has(ed.isbn)) {
+            mergedEditions.push(ed);
+            if (ed.isbn) existingIsbns.add(ed.isbn);
+          }
+        }
+
+        // Merge prices (deduplicating by store + formatType)
+        const mergedPrices = [...existing.prices];
+        for (const p of book.prices) {
+          if (!mergedPrices.some((mp) => mp.store === p.store && mp.formatType === p.formatType)) {
+            mergedPrices.push(p);
+          }
+        }
+
+        // Prefer existing cover or incoming cover
+        const cover = existing.cover || book.cover;
+
+        // Keep shorter / cleaner title
+        const currentTitle = cleanDisplayTitle(existing.title);
+        const candidateTitle = cleanDisplayTitle(book.title);
+        const title = candidateTitle.length < currentTitle.length ? candidateTitle : currentTitle;
+
+        canonicalMap.set(key, {
+          ...existing,
+          title,
+          cover,
+          editions: mergedEditions,
+          prices: mergedPrices,
+        });
+      }
+    }
+
+    const consolidatedBooks = Array.from(canonicalMap.values()).map((b, idx) => ({
+      ...b,
+      volume: idx + 1,
+    }));
+
+    return {
+      ...series,
+      books: consolidatedBooks,
+    };
+  });
+}
 
 export default function Home() {
   const [lang, setLang] = useState<Language>("pl");
@@ -70,14 +140,14 @@ export default function Home() {
     }
   }, [currentUser, isAuthLoaded]);
 
-  // Load user's saved books from localStorage on startup
+  // Load user's saved books from localStorage on startup and auto-consolidate duplicates
   React.useEffect(() => {
     try {
       const storedSeries = localStorage.getItem("tomestack_user_shelf_v4");
       if (storedSeries) {
         const parsed = JSON.parse(storedSeries);
         if (Array.isArray(parsed)) {
-          setSeriesList(parsed);
+          setSeriesList(consolidateSeriesList(parsed));
         }
       }
     } catch {
@@ -96,7 +166,7 @@ export default function Home() {
 
   // Handler to load demo library on user request
   const handleLoadDemoData = () => {
-    setSeriesList(initialSeriesDatabase);
+    setSeriesList(consolidateSeriesList(initialSeriesDatabase));
   };
 
   // Handler to clear library back to empty state
@@ -241,23 +311,28 @@ export default function Home() {
     setCurrentUser(updatedUser);
   };
 
+  // Reading status handlers
   const handleUpdateReadingStatus = (bookId: string, status: ReadingStatus) => {
     if (!currentUser) {
       setIsAuthOpen(true);
       return;
     }
 
-    const currentReading = { ...(currentUser.readingStatus || {}) };
+    const currentStatuses = { ...(currentUser.readingStatus || {}) };
     if (status === "unread") {
-      delete currentReading[bookId];
+      delete currentStatuses[bookId];
     } else {
-      currentReading[bookId] = status;
+      currentStatuses[bookId] = status;
     }
 
-    const updatedUser = { ...currentUser, readingStatus: currentReading };
+    const updatedUser = {
+      ...currentUser,
+      readingStatus: currentStatuses,
+    };
     setCurrentUser(updatedUser);
   };
 
+  // Hidden books / series handlers
   const handleToggleHideBook = (bookId: string) => {
     if (!currentUser) {
       setIsAuthOpen(true);
@@ -307,49 +382,114 @@ export default function Home() {
     cover?: string;
     readingStatus?: ReadingStatus;
   }) => {
-    const newBookId = `book-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+    const cleanTitle = cleanDisplayTitle(data.title);
+    const workKey = canonicalizeBookTitle(cleanTitle);
+
+    let targetBookId = `book-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
     const newEditionId = `ed-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
 
-    const newBook: Book = {
-      id: newBookId,
-      title: data.title,
-      volume: 1,
+    const newEdition: BookEdition = {
+      id: newEditionId,
       formatType: data.formatType,
-      cover: data.cover || (data.isbn ? `https://covers.openlibrary.org/b/isbn/${data.isbn}-L.jpg?default=false` : undefined),
-      prices: [
-        {
-          store: "Księgarnia",
-          formatType: data.formatType,
-          format: data.formatType === "hardcover" ? "Twarda oprawa" : "Miękka oprawa",
-          price: "39,90 zł",
-          shipping: "Dostępne",
-          isBest: true,
-          url: "https://www.swiatksiazki.pl",
-        },
-      ],
-      editions: [
-        {
-          id: newEditionId,
-          formatType: data.formatType,
-          publisher: data.series || "Wydawnictwo",
-          year: new Date().getFullYear(),
-          format: data.formatType === "hardcover" ? "Oprawa twarda" : "Oprawa miękka",
-          isbn: data.isbn || "9780000000000",
-        },
-      ],
+      publisher: data.series || "Wydawnictwo",
+      year: new Date().getFullYear(),
+      format: data.formatType === "hardcover" ? "Oprawa twarda" : "Oprawa miękka",
+      isbn: data.isbn || "9780000000000",
     };
 
     setSeriesList((prev) => {
       const targetSeriesName = data.series || `Twórczość: ${data.author}`;
-      const existing = prev.find((s) => s.seriesName.toLowerCase() === targetSeriesName.toLowerCase());
+      const existing = prev.find(
+        (s) =>
+          s.seriesName.toLowerCase() === targetSeriesName.toLowerCase() ||
+          s.author.toLowerCase().trim() === data.author.toLowerCase().trim()
+      );
+
       if (existing) {
+        // Check if this book (by canonical key) is already in the series!
+        const existingBookIndex = existing.books.findIndex(
+          (b) => canonicalizeBookTitle(b.title) === workKey
+        );
+
+        if (existingBookIndex !== -1) {
+          // MERGE INTO EXISTING BOOK CARD AS AN EDITION!
+          const existingBook = existing.books[existingBookIndex];
+          targetBookId = existingBook.id;
+
+          const editionExists = existingBook.editions.some(
+            (e) => (data.isbn && e.isbn === data.isbn) || (e.formatType === data.formatType && e.publisher === newEdition.publisher)
+          );
+
+          const updatedEditions = editionExists
+            ? existingBook.editions
+            : [...existingBook.editions, newEdition];
+
+          const updatedCover = existingBook.cover || data.cover;
+
+          const updatedBooks = existing.books.map((b, idx) =>
+            idx === existingBookIndex
+              ? {
+                  ...b,
+                  cover: updatedCover,
+                  editions: updatedEditions,
+                }
+              : b
+          );
+
+          return prev.map((s) =>
+            s.seriesId === existing.seriesId ? { ...s, books: updatedBooks } : s
+          );
+        }
+
+        // Otherwise, add as a new book in the series
+        const newBook: Book = {
+          id: targetBookId,
+          title: cleanTitle,
+          volume: existing.books.length + 1,
+          formatType: data.formatType,
+          cover: data.cover || (data.isbn ? `https://covers.openlibrary.org/b/isbn/${data.isbn}-L.jpg?default=false` : undefined),
+          prices: [
+            {
+              store: "Księgarnia",
+              formatType: data.formatType,
+              format: data.formatType === "hardcover" ? "Twarda oprawa" : "Miękka oprawa",
+              price: "39,90 zł",
+              shipping: "Dostępne",
+              isBest: true,
+              url: "https://www.swiatksiazki.pl",
+            },
+          ],
+          editions: [newEdition],
+        };
+
         return prev.map((s) =>
           s.seriesId === existing.seriesId
-            ? { ...s, books: [...s.books, { ...newBook, volume: s.books.length + 1 }] }
+            ? { ...s, books: [...s.books, newBook] }
             : s
         );
       } else {
+        // Create new series with new book
         const newSeriesId = `series-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+        const newBook: Book = {
+          id: targetBookId,
+          title: cleanTitle,
+          volume: 1,
+          formatType: data.formatType,
+          cover: data.cover || (data.isbn ? `https://covers.openlibrary.org/b/isbn/${data.isbn}-L.jpg?default=false` : undefined),
+          prices: [
+            {
+              store: "Księgarnia",
+              formatType: data.formatType,
+              format: data.formatType === "hardcover" ? "Twarda oprawa" : "Miękka oprawa",
+              price: "39,90 zł",
+              shipping: "Dostępne",
+              isBest: true,
+              url: "https://www.swiatksiazki.pl",
+            },
+          ],
+          editions: [newEdition],
+        };
+
         return [
           ...prev,
           {
@@ -364,9 +504,9 @@ export default function Home() {
 
     // Auto mark as owned / reading status if user is active
     if (currentUser) {
-      handleToggleOwned(newBookId, newEditionId);
+      handleToggleOwned(targetBookId, newEditionId);
       if (data.readingStatus) {
-        handleUpdateReadingStatus(newBookId, data.readingStatus);
+        handleUpdateReadingStatus(targetBookId, data.readingStatus);
       }
     }
   };
@@ -392,55 +532,77 @@ export default function Home() {
           existingSeries?.seriesId ||
           `series-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
 
-        const existingBooks = existingSeries?.books || [];
-        const existingTitles = new Set(existingBooks.map((b) => b.title.toLowerCase().trim()));
-
-        const newBooksFormatted: Book[] = [];
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        booksToAdd.forEach((b: any) => {
-          const normTitle = (b.title || "").toLowerCase().trim();
-          if (!normTitle || existingTitles.has(normTitle)) return;
-          existingTitles.add(normTitle);
-
-          const newBookId = `book-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
-          const newEditionId = `ed-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
-
-          newBooksFormatted.push({
-            id: newBookId,
-            title: b.title,
-            volume: existingBooks.length + newBooksFormatted.length + 1,
-            formatType: b.formatType || "paperback",
-            cover: b.coverUrl,
-            prices: [
-              {
-                store: "Księgarnia",
-                formatType: b.formatType || "paperback",
-                format: b.formatType === "hardcover" ? "Twarda oprawa" : "Miękka oprawa",
-                price: "29,90 zł",
-                shipping: "Dostępne",
-                isBest: true,
-                url: "https://www.swiatksiazki.pl",
-              },
-            ],
-            editions: [
-              {
-                id: newEditionId,
-                formatType: b.formatType || "paperback",
-                publisher: b.publisher || "Wydawnictwo",
-                year: b.publicationYear || new Date().getFullYear(),
-                format: b.formatType === "hardcover" ? "Oprawa twarda" : "Oprawa miękka",
-                isbn: b.isbn || "9780000000000",
-              },
-            ],
-          });
+        // Map existing books by canonical work key
+        const existingBooks = existingSeries ? [...existingSeries.books] : [];
+        const canonicalBookMap = new Map<string, Book>();
+        existingBooks.forEach((b) => {
+          const key = canonicalizeBookTitle(b.title);
+          if (key) canonicalBookMap.set(key, b);
         });
 
-        if (newBooksFormatted.length === 0) return prev;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        booksToAdd.forEach((b: any) => {
+          const cleanedTitle = cleanDisplayTitle(b.title);
+          const workKey = canonicalizeBookTitle(cleanedTitle);
+          if (!workKey) return;
+
+          const existingBook = canonicalBookMap.get(workKey);
+          const newEditionId = `ed-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+          const edition: BookEdition = {
+            id: newEditionId,
+            formatType: b.formatType || "paperback",
+            publisher: b.publisher || "Wydawnictwo",
+            year: b.publicationYear || new Date().getFullYear(),
+            format: b.formatType === "hardcover" ? "Oprawa twarda" : "Oprawa miękka",
+            isbn: b.isbn || "9780000000000",
+          };
+
+          if (existingBook) {
+            // MERGE AS EDITION INTO EXISTING BOOK!
+            const editionExists = existingBook.editions.some(
+              (ed) => (b.isbn && ed.isbn === b.isbn) || (ed.formatType === b.formatType && ed.publisher === b.publisher)
+            );
+            if (!editionExists) {
+              existingBook.editions.push(edition);
+            }
+            if (!existingBook.cover && b.coverUrl) {
+              existingBook.cover = b.coverUrl;
+            }
+          } else {
+            // NEW BOOK CARD
+            const newBookId = `book-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+            const newBook: Book = {
+              id: newBookId,
+              title: cleanedTitle,
+              volume: canonicalBookMap.size + 1,
+              formatType: b.formatType || "paperback",
+              cover: b.coverUrl,
+              prices: [
+                {
+                  store: "Księgarnia",
+                  formatType: b.formatType || "paperback",
+                  format: b.formatType === "hardcover" ? "Twarda oprawa" : "Miękka oprawa",
+                  price: "29,90 zł",
+                  shipping: "Dostępne",
+                  isBest: true,
+                  url: "https://www.swiatksiazki.pl",
+                },
+              ],
+              editions: [edition],
+            };
+            canonicalBookMap.set(workKey, newBook);
+          }
+        });
+
+        const finalBooks = Array.from(canonicalBookMap.values()).map((b, idx) => ({
+          ...b,
+          volume: idx + 1,
+        }));
 
         if (existingSeries) {
           return prev.map((s) =>
             s.seriesId === existingSeries.seriesId
-              ? { ...s, books: [...s.books, ...newBooksFormatted] }
+              ? { ...s, books: finalBooks }
               : s
           );
         } else {
@@ -450,7 +612,7 @@ export default function Home() {
               seriesId: targetSeriesId,
               seriesName: targetSeriesName,
               author: authorName,
-              books: newBooksFormatted,
+              books: finalBooks,
             },
           ];
         }

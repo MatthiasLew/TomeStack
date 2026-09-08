@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { Language, BindingFormat, ReadingStatus } from "@/types";
 import { BookCover } from "./BookCover";
 import { Search, X, Loader2, Check, Plus, BookOpen, Library } from "lucide-react";
+import { cleanDisplayTitle } from "@/lib/api/bookProviders";
 
 interface AuthorBookResult {
   title: string;
@@ -112,18 +113,16 @@ export const AuthorSearchModal: React.FC<AuthorSearchModalProps> = ({
     if (titleLower.includes("chyłka") || titleLower.includes("forst")) {
       return "Seria z Joanną Chyłką / Forst";
     }
-    if (bookTitle.includes(":") && bookTitle.split(":")[0].length < 30) {
-      return bookTitle.split(":")[0].trim();
-    }
     return `Dzieła i powieści (${authorName})`;
   };
 
   const handleAdd = (b: AuthorBookResult, status: ReadingStatus = "unread") => {
     const author = b.author || searchedAuthor;
-    const seriesName = detectSeriesName(b.title, author);
-    const key = `${b.title}-${b.isbn || "no-isbn"}`;
+    const cleanTitle = cleanDisplayTitle(b.title);
+    const seriesName = detectSeriesName(cleanTitle, author);
+    const key = `${cleanTitle}-${b.isbn || "no-isbn"}`;
     onAddBookToShelf({
-      title: b.title,
+      title: cleanTitle,
       author,
       series: seriesName,
       formatType: b.formatType,
@@ -138,11 +137,12 @@ export const AuthorSearchModal: React.FC<AuthorSearchModalProps> = ({
     const nextSet = new Set(addedIds);
     books.forEach((b) => {
       const author = b.author || searchedAuthor;
-      const seriesName = detectSeriesName(b.title, author);
-      const key = `${b.title}-${b.isbn || "no-isbn"}`;
+      const cleanTitle = cleanDisplayTitle(b.title);
+      const seriesName = detectSeriesName(cleanTitle, author);
+      const key = `${cleanTitle}-${b.isbn || "no-isbn"}`;
       nextSet.add(key);
       onAddBookToShelf({
-        title: b.title,
+        title: cleanTitle,
         author,
         series: seriesName,
         formatType: b.formatType,

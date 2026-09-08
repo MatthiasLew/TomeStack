@@ -383,22 +383,40 @@ export async function unifiedSearchByQuery(
   ]);
 
   const results: UnifiedBookMetadata[] = [];
-  const seenIsbns = new Set<string>();
-  const seenTitles = new Set<string>();
+  const seenWorkKeys = new Set<string>();
+
+  const addCandidate = (b: UnifiedBookMetadata) => {
+    const cleanedTitle = cleanDisplayTitle(b.title);
+    const workKey = canonicalizeBookTitle(cleanedTitle);
+    if (!workKey || workKey.length < 2) return;
+
+    if (seenWorkKeys.has(workKey)) {
+      const existing = results.find((r) => canonicalizeBookTitle(r.title) === workKey);
+      if (existing) {
+        if (!existing.coverUrl && b.coverUrl) existing.coverUrl = b.coverUrl;
+        if (!existing.isbn && b.isbn) existing.isbn = b.isbn;
+      }
+      return;
+    }
+
+    seenWorkKeys.add(workKey);
+    results.push({
+      ...b,
+      title: cleanedTitle,
+    });
+  };
 
   // 1. Add BN results
   if (bnResult.status === "fulfilled") {
     for (const b of bnResult.value) {
-      if (b.isbn) seenIsbns.add(b.isbn);
-      seenTitles.add(b.title.toLowerCase());
-      results.push({
+      addCandidate({
         title: b.title,
         author: b.author,
         publisher: b.publisher,
         publicationYear: b.publicationYear,
         isbn: b.isbn || undefined,
         formatType: b.formatType,
-        coverUrl: b.isbn ? `https://covers.openlibrary.org/b/isbn/${b.isbn}-L.jpg` : undefined,
+        coverUrl: b.isbn ? `https://covers.openlibrary.org/b/isbn/${b.isbn}-L.jpg?default=false` : undefined,
         source: "bn",
       });
     }
@@ -407,24 +425,14 @@ export async function unifiedSearchByQuery(
   // 2. Add Open Library results
   if (olResult.status === "fulfilled") {
     for (const b of olResult.value) {
-      const normTitle = b.title.toLowerCase();
-      if (b.isbn && seenIsbns.has(b.isbn)) continue;
-      if (seenTitles.has(normTitle)) continue;
-      if (b.isbn) seenIsbns.add(b.isbn);
-      seenTitles.add(normTitle);
-      results.push(b);
+      addCandidate(b);
     }
   }
 
   // 3. Add Google Books results
   if (gbResult.status === "fulfilled") {
     for (const b of gbResult.value) {
-      const normTitle = b.title.toLowerCase();
-      if (b.isbn && seenIsbns.has(b.isbn)) continue;
-      if (seenTitles.has(normTitle)) continue;
-      if (b.isbn) seenIsbns.add(b.isbn);
-      seenTitles.add(normTitle);
-      results.push(b);
+      addCandidate(b);
     }
   }
 
@@ -537,28 +545,95 @@ export async function searchOpenLibraryByAuthor(
 
 /**
  * Searches across BN, Open Library and Google Books by author name to fetch complete bibliography with covers.
- * Ultra-fast with curated author seeds + fast 2.5s network timeouts.
+/**
+ * Cleans a book title for presentation by stripping MARC cataloging artifacts,
+ * authorship statements, and generic genre subtitles (e.g. ": powieść", ": opowiadania").
+ */
+export function cleanDisplayTitle(rawTitle: string): string {
+  if (!rawTitle) return "";
+  let s = rawTitle.trim();
+
+  // Strip authorship statements after /
+  const slashIdx = s.indexOf("/");
+  if (slashIdx !== -1) {
+    s = s.substring(0, slashIdx).trim();
+  }
+
+  // Handle BN convention: "Nineteen eighty-four (pol.) Rok 1984"
+  const polIdx = s.indexOf("(pol.)");
+  if (polIdx !== -1) {
+    const afterPol = s.substring(polIdx + 6).trim();
+    if (afterPol.length > 0) s = afterPol;
+  }
+
+  // Strip generic genre and edition subtitles after colon
+  const colonIdx = s.indexOf(":");
+  if (colonIdx !== -1) {
+    const mainTitle = s.substring(0, colonIdx).trim();
+    const subTitle = s.substring(colonIdx + 1).trim();
+    const genericGenrePattern = /^(powie[sś][cć]|opowiadani|esej|reporta[zż]|bajka|nowel|dramat|poemat|poezj|wiersz|wspomnien|autobiograf|biograf|felieton|utw[oó]r|antologi|wyb[oó]r|tom|cz[eę][sś][cć]|cz\.|wydani|przek[lł]ad|prze[lł]|proza)/i;
+
+    if (genericGenrePattern.test(subTitle) || (mainTitle.length >= 4 && subTitle.length <= 35)) {
+      s = mainTitle;
+    }
+  }
+
+  // Remove trailing dots, commas, slashes, colons
+  return s.replace(/[,.;:/]+$/, "").trim();
+}
+
+/**
+ * Produces a canonical comparison key for a book title.
+ * Guarantees that different editions, translations, or subtitle variations
+ * (e.g. "Córka proboszcza", "Córka proboszcza : powieść", "Corka proboszcza")
+ * resolve to the EXACT SAME literary work.
+ */
+export function canonicalizeBookTitle(rawTitle: string): string {
+  if (!rawTitle) return "";
+  let s = cleanDisplayTitle(rawTitle).toLowerCase().trim();
+
+  // Normalize "1984" vs "rok 1984"
+  s = s.replace(/\brok\s+1984\b/g, "1984");
+
+  // Remove parenthesized or bracketed qualifiers
+  s = s.replace(/\([^)]*\)/g, " ").replace(/\[[^\]]*\]/g, " ");
+
+  // Polish diacritics folding
+  s = s.replace(/[ąćęłńóśźż]/g, (c) => {
+    const map: Record<string, string> = {
+      ą: "a", ć: "c", ę: "e", ł: "l", ń: "n", ó: "o", ś: "s", ź: "z", ż: "z"
+    };
+    return map[c] || c;
+  });
+
+  // Keep only alphanumeric
+  return s.replace(/[^a-z0-9]/g, "");
+}
+
+/**
+ * Searches across BN, Open Library and Google Books by author name to fetch complete bibliography with covers.
+ * Ultra-fast with curated author seeds + canonical work-level deduplication.
+ * Every unique literary work returns EXACTLY 1 entry.
  */
 export async function unifiedSearchByAuthor(
   author: string,
   limit: number = 40
 ): Promise<UnifiedBookMetadata[]> {
   const results: UnifiedBookMetadata[] = [];
-  const seenTitles = new Set<string>();
-
-  // Helper to normalize title for deduplication
-  const normalize = (t: string) =>
-    t.toLowerCase().replace(/[^a-z0-9ąćęłńóśźż]/gi, "").trim();
+  const seenWorkKeys = new Set<string>();
 
   // 1. Seed instantly with curated titles if available
   const authorNorm = author.toLowerCase().trim();
   for (const [key, curatedList] of Object.entries(CURATED_AUTHOR_BIBLIOGRAPHIES)) {
     if (authorNorm.includes(key) || key.includes(authorNorm)) {
       for (const b of curatedList) {
-        const k = normalize(b.title);
-        if (!k || seenTitles.has(k)) continue;
-        seenTitles.add(k);
-        results.push(b);
+        const workKey = canonicalizeBookTitle(b.title);
+        if (!workKey || seenWorkKeys.has(workKey)) continue;
+        seenWorkKeys.add(workKey);
+        results.push({
+          ...b,
+          title: cleanDisplayTitle(b.title),
+        });
       }
       break;
     }
@@ -571,15 +646,46 @@ export async function unifiedSearchByAuthor(
     searchGoogleBooksByQuery(`inauthor:${author}`, 15),
   ]);
 
+  // Helper to merge or insert a book
+  const addOrEnrich = (b: UnifiedBookMetadata) => {
+    const cleanedTitle = cleanDisplayTitle(b.title);
+    const workKey = canonicalizeBookTitle(cleanedTitle);
+    if (!workKey || workKey.length < 2) return;
+
+    // Filter out obvious metadata or biography artifacts about the author
+    const authorSimplified = author.toLowerCase().replace(/[^a-z0-9]/g, "");
+    if (workKey === authorSimplified || (workKey.includes(authorSimplified) && !workKey.includes("1984"))) {
+      return;
+    }
+
+    if (seenWorkKeys.has(workKey)) {
+      // Enrich existing book if incoming has cover or missing metadata
+      const existing = results.find((r) => canonicalizeBookTitle(r.title) === workKey);
+      if (existing) {
+        if (!existing.coverUrl && b.coverUrl) {
+          existing.coverUrl = b.coverUrl;
+        }
+        if (!existing.isbn && b.isbn) {
+          existing.isbn = b.isbn;
+        }
+        if (!existing.publisher && b.publisher) {
+          existing.publisher = b.publisher;
+        }
+      }
+      return;
+    }
+
+    seenWorkKeys.add(workKey);
+    results.push({
+      ...b,
+      title: cleanedTitle,
+    });
+  };
+
   // Process BN books (highest accuracy for Polish editions)
   if (bnResult.status === "fulfilled") {
     for (const b of bnResult.value) {
-      const key = normalize(b.title);
-      if (!key || seenTitles.has(key) || key.length < 3) continue;
-      // Skip foreign non-translated or metadata entries
-      if (key.includes("georgeorwell") && !key.includes("rok1984")) continue;
-      seenTitles.add(key);
-      results.push({
+      addOrEnrich({
         title: b.title,
         author: b.author || author,
         publisher: b.publisher,
@@ -595,34 +701,14 @@ export async function unifiedSearchByAuthor(
   // Process Google Books (rich covers)
   if (gbResult.status === "fulfilled") {
     for (const b of gbResult.value) {
-      const key = normalize(b.title);
-      if (!key) continue;
-      if (seenTitles.has(key)) {
-        const existing = results.find((r) => normalize(r.title) === key);
-        if (existing && !existing.coverUrl && b.coverUrl) {
-          existing.coverUrl = b.coverUrl;
-        }
-        continue;
-      }
-      seenTitles.add(key);
-      results.push(b);
+      addOrEnrich(b);
     }
   }
 
   // Process Open Library
   if (olResult.status === "fulfilled") {
     for (const b of olResult.value) {
-      const key = normalize(b.title);
-      if (!key) continue;
-      if (seenTitles.has(key)) {
-        const existing = results.find((r) => normalize(r.title) === key);
-        if (existing && !existing.coverUrl && b.coverUrl) {
-          existing.coverUrl = b.coverUrl;
-        }
-        continue;
-      }
-      seenTitles.add(key);
-      results.push(b);
+      addOrEnrich(b);
     }
   }
 

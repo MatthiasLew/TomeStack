@@ -42,16 +42,19 @@ export function cleanAuthor(rawAuthor?: string): string {
 }
 
 /**
- * Normalizes and extracts Polish title from BN catalog record.
+ * Normalizes and extracts Polish title from BN catalog record, stripping MARC artifacts and generic genre subtitles.
  */
 export function cleanTitle(rawTitle?: string): string {
   if (!rawTitle) return "";
   let base = rawTitle.trim();
+
+  // 1. Remove authorship / responsibility statements after slash (e.g. "... / Clergyman's daughter")
   const slashIdx = base.indexOf("/");
   if (slashIdx !== -1) {
     base = base.substring(0, slashIdx).trim();
   }
-  // BN format: "Original title (pol.) Polish title" -> prefer Polish title
+
+  // 2. BN format: "Original title (pol.) Polish title" -> prefer Polish title
   const polIdx = base.indexOf("(pol.)");
   if (polIdx !== -1) {
     const afterPol = base.substring(polIdx + 6).trim();
@@ -59,6 +62,19 @@ export function cleanTitle(rawTitle?: string): string {
       base = afterPol;
     }
   }
+
+  // 3. Strip generic genre and edition subtitles after colon (e.g. ": powieść", ": bajka polityczna")
+  const colonIdx = base.indexOf(":");
+  if (colonIdx !== -1) {
+    const mainTitle = base.substring(0, colonIdx).trim();
+    const subTitle = base.substring(colonIdx + 1).trim();
+    const genericGenrePattern = /^(powie[sś][cć]|opowiadani|esej|reporta[zż]|bajka|nowel|dramat|poemat|poezj|wiersz|wspomnien|autobiograf|biograf|felieton|utw[oó]r|antologi|wyb[oó]r|tom|cz[eę][sś][cć]|cz\.|wydani|przek[lł]ad|prze[lł]|proza)/i;
+
+    if (genericGenrePattern.test(subTitle) || (mainTitle.length >= 4 && subTitle.length <= 35)) {
+      base = mainTitle;
+    }
+  }
+
   return base.replace(/[,.;:/]+$/, "").trim();
 }
 
