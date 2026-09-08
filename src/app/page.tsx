@@ -16,12 +16,12 @@ import {
   authorsDatabase,
   initialSeriesDatabase,
 } from "@/data/mockData";
-import { FolderMinus, FolderPlus } from "lucide-react";
+import { FolderMinus, FolderPlus, Search, Library } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { UserBanner, GuestAlertBanner } from "@/components/UserBanner";
 import { StatsCards } from "@/components/StatsCards";
 import { FilterToolbar } from "@/components/FilterToolbar";
-import { SeriesCard } from "@/components/SeriesCard";
+import { AuthorSection } from "@/components/AuthorSection";
 import { MissingRadar } from "@/components/MissingRadar";
 import { BookModal } from "@/components/BookModal";
 import { AuthorModal } from "@/components/AuthorModal";
@@ -69,6 +69,32 @@ export default function Home() {
     }
   }, [currentUser, isAuthLoaded]);
 
+  // Load custom added series from localStorage on startup
+  React.useEffect(() => {
+    try {
+      const storedSeries = localStorage.getItem("tomestack_custom_series_v3");
+      if (storedSeries) {
+        const parsed = JSON.parse(storedSeries);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const existingIds = new Set(parsed.map((s: Series) => s.seriesId));
+          const missingInitial = initialSeriesDatabase.filter((s) => !existingIds.has(s.seriesId));
+          setSeriesList([...parsed, ...missingInitial]);
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  // Save seriesList to localStorage whenever user adds new books/authors
+  React.useEffect(() => {
+    try {
+      localStorage.setItem("tomestack_custom_series_v3", JSON.stringify(seriesList));
+    } catch {
+      // ignore
+    }
+  }, [seriesList]);
+
   // Filters & Tabs
   const [formatFilter, setFormatFilter] = useState<FormatFilter>("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
@@ -85,6 +111,7 @@ export default function Home() {
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [isAuthorSearchOpen, setIsAuthorSearchOpen] = useState(false);
+  const [authorSearchInitialQuery, setAuthorSearchInitialQuery] = useState("");
   const [showHidden, setShowHidden] = useState(false);
 
   // Collapsed series state for large collections
@@ -371,6 +398,23 @@ export default function Home() {
       .filter(Boolean) as Series[];
   }, [seriesList, searchQuery, showHidden, currentUser]);
 
+  // Group filtered series by Author: Autor -> Seria -> Książki
+  const authorGroups = useMemo(() => {
+    const map = new Map<string, Series[]>();
+    for (const s of filteredSeries) {
+      const author = s.author || "Inni autorzy";
+      if (!map.has(author)) {
+        map.set(author, []);
+      }
+      map.get(author)!.push(s);
+    }
+
+    return Array.from(map.entries()).map(([authorName, seriesListForAuthor]) => ({
+      authorName,
+      series: seriesListForAuthor,
+    }));
+  }, [filteredSeries]);
+
   return (
     <div className="min-h-screen flex flex-col antialiased selection:bg-brand-500 selection:text-white">
       {/* Top Navbar */}
@@ -428,21 +472,47 @@ export default function Home() {
 
         {/* Content based on Active Tab */}
         {activeTab === "series" && (
-          <div className="space-y-4">
-            {filteredSeries.length > 0 && (
+          <div className="space-y-6">
+            {/* Live Search Callout if searching */}
+            {searchQuery.trim() && (
+              <div className="card-glass rounded-2xl p-4 sm:p-5 border border-brand-500/30 bg-gradient-to-r from-brand-950/40 via-gray-900/80 to-gray-900 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xl">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 rounded-xl bg-brand-500/20 text-brand-400 border border-brand-500/40">
+                    <Search className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-white">
+                      {lang === "pl" ? `Szukasz "${searchQuery}" w katalogu online?` : `Looking for "${searchQuery}" in online catalog?`}
+                    </p>
+                    <p className="text-xs text-gray-400">
+                      {lang === "pl"
+                        ? "Wczytaj pełną bibliografię i okładki prosto z Biblioteki Narodowej & Open Library"
+                        : "Fetch all books and covers directly from National Library & Open Library"}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    setAuthorSearchInitialQuery(searchQuery.trim());
+                    setIsAuthorSearchOpen(true);
+                  }}
+                  className="px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-bold transition flex items-center gap-2 shadow-lg shadow-brand-900/40 cursor-pointer shrink-0"
+                >
+                  <Library className="w-4 h-4" />
+                  <span>{lang === "pl" ? "Przeszukaj bazę online" : "Search online catalog"}</span>
+                </button>
+              </div>
+            )}
+
+            {authorGroups.length > 0 && (
               <div className="flex flex-wrap items-center justify-between gap-3 px-1 py-1">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-semibold text-gray-300">
-                    {lang === "pl" ? "Cykle i sagi" : "Sagas & Series"}
+                    {lang === "pl" ? "Twoja biblioteka (Autor ➔ Cykl ➔ Książki)" : "Your Library (Author ➔ Series ➔ Books)"}
                   </span>
                   <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-gray-800 text-gray-300 border border-gray-700">
-                    {filteredSeries.length}
+                    {authorGroups.length} {lang === "pl" ? "autorów" : "authors"}
                   </span>
-                  {collapsedSeriesIds.size > 0 && (
-                    <span className="text-xs text-brand-400 font-medium">
-                      ({collapsedSeriesIds.size} {lang === "pl" ? "zwiniętych" : "collapsed"})
-                    </span>
-                  )}
                 </div>
 
                 <div className="flex items-center gap-2">
@@ -466,26 +536,48 @@ export default function Home() {
               </div>
             )}
 
-            {filteredSeries.length === 0 ? (
-              <div className="card-glass rounded-2xl p-12 text-center text-gray-400">
-                <p>{lang === "pl" ? "Brak cykli pasujących do kryteriów." : "No series matching filters."}</p>
+            {authorGroups.length === 0 ? (
+              <div className="card-glass rounded-2xl p-12 text-center text-gray-400 space-y-4">
+                <p className="text-base font-semibold text-gray-300">
+                  {lang === "pl" ? `Brak pozycji pasujących do "${searchQuery}".` : `No items matching "${searchQuery}".`}
+                </p>
+                <p className="text-xs text-gray-500 max-w-md mx-auto">
+                  {lang === "pl"
+                    ? "Możesz pobrać całą bibliografię tego autora bezpośrednio z zewnętrznej bazy Biblioteki Narodowej i dodać ją do swojej półki."
+                    : "You can load this author's works from the national library database and import them to your shelf."}
+                </p>
+                <button
+                  onClick={() => {
+                    setAuthorSearchInitialQuery(searchQuery.trim());
+                    setIsAuthorSearchOpen(true);
+                  }}
+                  className="px-4 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-bold transition inline-flex items-center gap-2 shadow-lg cursor-pointer"
+                >
+                  <Library className="w-4 h-4" />
+                  <span>{lang === "pl" ? `Pobierz dzieła "${searchQuery}" z API` : `Fetch "${searchQuery}" from API`}</span>
+                </button>
               </div>
             ) : (
-              filteredSeries.map((series) => (
-                <SeriesCard
-                  key={series.seriesId}
-                  series={series}
+              authorGroups.map((group) => (
+                <AuthorSection
+                  key={group.authorName}
+                  authorName={group.authorName}
+                  seriesList={group.series}
                   currentUser={currentUser}
                   formatFilter={formatFilter}
                   statusFilter={statusFilter}
                   lang={lang}
                   showHidden={showHidden}
-                  isCollapsed={collapsedSeriesIds.has(series.seriesId)}
-                  onToggleCollapse={() => handleToggleSeriesCollapse(series.seriesId)}
+                  collapsedSeriesIds={collapsedSeriesIds}
+                  onToggleSeriesCollapse={handleToggleSeriesCollapse}
                   onOpenBookModal={(book, s) =>
                     setActiveBookModal({ book, series: s })
                   }
                   onOpenAuthorModal={(author) => setActiveAuthorName(author)}
+                  onOpenAuthorSearch={(author) => {
+                    setAuthorSearchInitialQuery(author);
+                    setIsAuthorSearchOpen(true);
+                  }}
                   onToggleOwned={handleToggleOwned}
                   onUpdateReadingStatus={handleUpdateReadingStatus}
                   onToggleHideBook={handleToggleHideBook}
@@ -511,21 +603,16 @@ export default function Home() {
         )}
 
         {activeTab === "all" && (
-          <div className="space-y-4">
-            {filteredSeries.length > 0 && (
+          <div className="space-y-6">
+            {authorGroups.length > 0 && (
               <div className="flex flex-wrap items-center justify-between gap-3 px-1 py-1">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-semibold text-gray-300">
-                    {lang === "pl" ? "Wszystkie tomy wg cykli" : "All Volumes by Series"}
+                    {lang === "pl" ? "Wszystkie tomy (Autor ➔ Cykl ➔ Książki)" : "All Volumes (Author ➔ Series ➔ Books)"}
                   </span>
                   <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-gray-800 text-gray-300 border border-gray-700">
-                    {filteredSeries.length}
+                    {authorGroups.length} {lang === "pl" ? "autorów" : "authors"}
                   </span>
-                  {collapsedSeriesIds.size > 0 && (
-                    <span className="text-xs text-brand-400 font-medium">
-                      ({collapsedSeriesIds.size} {lang === "pl" ? "zwiniętych" : "collapsed"})
-                    </span>
-                  )}
                 </div>
 
                 <div className="flex items-center gap-2">
@@ -549,21 +636,26 @@ export default function Home() {
               </div>
             )}
 
-            {filteredSeries.map((series) => (
-              <SeriesCard
-                key={series.seriesId}
-                series={series}
+            {authorGroups.map((group) => (
+              <AuthorSection
+                key={group.authorName}
+                authorName={group.authorName}
+                seriesList={group.series}
                 currentUser={currentUser}
                 formatFilter="all"
                 statusFilter="all"
                 lang={lang}
                 showHidden={showHidden}
-                isCollapsed={collapsedSeriesIds.has(series.seriesId)}
-                onToggleCollapse={() => handleToggleSeriesCollapse(series.seriesId)}
+                collapsedSeriesIds={collapsedSeriesIds}
+                onToggleSeriesCollapse={handleToggleSeriesCollapse}
                 onOpenBookModal={(book, s) =>
                   setActiveBookModal({ book, series: s })
                 }
                 onOpenAuthorModal={(author) => setActiveAuthorName(author)}
+                onOpenAuthorSearch={(author) => {
+                  setAuthorSearchInitialQuery(author);
+                  setIsAuthorSearchOpen(true);
+                }}
                 onToggleOwned={handleToggleOwned}
                 onUpdateReadingStatus={handleUpdateReadingStatus}
                 onToggleHideBook={handleToggleHideBook}
@@ -615,7 +707,11 @@ export default function Home() {
       {isAuthorSearchOpen && (
         <AuthorSearchModal
           lang={lang}
-          onClose={() => setIsAuthorSearchOpen(false)}
+          initialQuery={authorSearchInitialQuery || searchQuery}
+          onClose={() => {
+            setIsAuthorSearchOpen(false);
+            setAuthorSearchInitialQuery("");
+          }}
           onAddBookToShelf={handleAddBook}
         />
       )}

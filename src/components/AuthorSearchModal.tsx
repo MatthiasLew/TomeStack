@@ -18,6 +18,7 @@ interface AuthorBookResult {
 
 interface AuthorSearchModalProps {
   lang: Language;
+  initialQuery?: string;
   onClose: () => void;
   onAddBookToShelf: (book: {
     title: string;
@@ -31,11 +32,12 @@ interface AuthorSearchModalProps {
 }
 
 const POPULAR_AUTHORS = [
+  "George Orwell",
   "Andrzej Sapkowski",
+  "Stanisław Lem",
   "Stephen King",
   "J.R.R. Tolkien",
   "Frank Herbert",
-  "Stanisław Lem",
   "Brandon Sanderson",
   "Remigiusz Mróz",
   "J.K. Rowling",
@@ -43,15 +45,24 @@ const POPULAR_AUTHORS = [
 
 export const AuthorSearchModal: React.FC<AuthorSearchModalProps> = ({
   lang,
+  initialQuery = "",
   onClose,
   onAddBookToShelf,
 }) => {
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(initialQuery);
   const [loading, setLoading] = useState(false);
   const [books, setBooks] = useState<AuthorBookResult[]>([]);
   const [searchedAuthor, setSearchedAuthor] = useState("");
   const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (initialQuery && initialQuery.trim()) {
+      setQuery(initialQuery.trim());
+      handleSearch(initialQuery.trim());
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialQuery]);
 
   const handleSearch = async (authorToSearch: string) => {
     const authorName = authorToSearch.trim();

@@ -432,7 +432,7 @@ export async function unifiedSearchByQuery(
  */
 export async function searchOpenLibraryByAuthor(
   author: string,
-  limit: number = 10
+  limit: number = 40
 ): Promise<UnifiedBookMetadata[]> {
   try {
     const url = `https://openlibrary.org/search.json?author=${encodeURIComponent(author)}&limit=${limit}`;
@@ -443,7 +443,21 @@ export async function searchOpenLibraryByAuthor(
 
     if (!res.ok) return [];
     const data = await res.json();
-    const docs: OpenLibrarySearchDoc[] = data.docs || [];
+    let docs: OpenLibrarySearchDoc[] = data.docs || [];
+
+    // If author param returned very few results, try broader query
+    if (docs.length < 3) {
+      const fallbackUrl = `https://openlibrary.org/search.json?q=${encodeURIComponent(author)}&limit=${limit}`;
+      const fallbackRes = await fetch(fallbackUrl, {
+        headers: { Accept: "application/json" },
+      });
+      if (fallbackRes.ok) {
+        const fallbackData = await fallbackRes.json();
+        if (fallbackData.docs && fallbackData.docs.length > 0) {
+          docs = fallbackData.docs;
+        }
+      }
+    }
 
     return docs.map((doc) => {
       const firstIsbn = doc.isbn ? doc.isbn[0] : undefined;
@@ -475,12 +489,12 @@ export async function searchOpenLibraryByAuthor(
  */
 export async function unifiedSearchByAuthor(
   author: string,
-  limit: number = 24
+  limit: number = 40
 ): Promise<UnifiedBookMetadata[]> {
   const [bnResult, olResult, gbResult] = await Promise.allSettled([
-    fetchBnByQuery({ author, limit }),
-    searchOpenLibraryByAuthor(author, limit),
-    searchGoogleBooksByQuery(`inauthor:${author}`, limit),
+    fetchBnByQuery({ author, limit: 30 }),
+    searchOpenLibraryByAuthor(author, 30),
+    searchGoogleBooksByQuery(`inauthor:${author}`, 20),
   ]);
 
   const results: UnifiedBookMetadata[] = [];
@@ -490,7 +504,7 @@ export async function unifiedSearchByAuthor(
   const normalize = (t: string) =>
     t.toLowerCase().replace(/[^a-z0-9ąćęłńóśźż]/gi, "").trim();
 
-  // 1. Process BN books
+  // 1. Process BN books (highest accuracy for Polish editions)
   if (bnResult.status === "fulfilled") {
     for (const b of bnResult.value) {
       const key = normalize(b.title);
@@ -541,6 +555,21 @@ export async function unifiedSearchByAuthor(
       }
       seenTitles.add(key);
       results.push(b);
+    }
+  }
+
+  // If still very few results (less than 4), run broad Open Library search
+  if (results.length < 4) {
+    try {
+      const broadOl = await searchOpenLibraryByQuery(author, 20);
+      for (const b of broadOl) {
+        const key = normalize(b.title);
+        if (!key || seenTitles.has(key)) continue;
+        seenTitles.add(key);
+        results.push(b);
+      }
+    } catch {
+      // ignore
     }
   }
 

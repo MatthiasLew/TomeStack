@@ -61,9 +61,84 @@ export const authorsDatabase: Record<string, Author> = {
       },
     ],
   },
+  "George Orwell": {
+    name: "George Orwell",
+    avatar: "https://images.unsplash.com/photo-1544717302-de2939b7ef71?w=200&q=80",
+    bio: "Jeden z najwybitniejszych i najbardziej proroczych pisarzy XX wieku, twórca antyutopii 'Rok 1984' oraz alegorycznego 'Folwarku zwierzęcego'.",
+    series: [
+      {
+        name: "Antyutopie i dzieła klasyczne",
+        seriesId: "orwell-classics",
+        bookIds: ["orwell-1984", "orwell-folwark", "orwell-dno", "orwell-katalonia"],
+      },
+    ],
+  },
 };
 
 export const initialSeriesDatabase: Series[] = [
+  {
+    seriesId: "orwell-classics",
+    seriesName: "Antyutopie i dzieła klasyczne",
+    author: "George Orwell",
+    books: [
+      {
+        id: "orwell-1984",
+        title: "Rok 1984",
+        volume: 1,
+        formatType: "hardcover",
+        cover: "",
+        prices: [
+          { store: "Empik", formatType: "hardcover", format: "Twarda oprawa", price: "29,99 zł", shipping: "Salon za 0 zł", isBest: true, url: "https://www.empik.com/rok-1984" },
+          { store: "Świat Książki", formatType: "paperback", format: "Miękka oprawa", price: "24,50 zł", shipping: "Wysyłka 24h", isBest: true, url: "https://www.swiatksiazki.pl" },
+        ],
+        editions: [
+          { id: "ed-o1984-1", formatType: "hardcover", publisher: "Wydawnictwo MUZA", year: 2021, format: "Oprawa twarda", isbn: "9788328716162", coverDesc: "Wydanie twarde z okiem" },
+          { id: "ed-o1984-2", formatType: "paperback", publisher: "Wydawnictwo Literackie", year: 2021, format: "Oprawa miękka", isbn: "9788308073575", coverDesc: "Przekład Tomasza Mirkowicza" },
+        ],
+      },
+      {
+        id: "orwell-folwark",
+        title: "Folwark zwierzęcy",
+        volume: 2,
+        formatType: "hardcover",
+        cover: "",
+        prices: [
+          { store: "TaniaKsiążka.pl", formatType: "hardcover", format: "Twarda oprawa", price: "22,90 zł", shipping: "Wysyłka jutro", isBest: true, url: "https://www.taniaksiazka.pl" },
+          { store: "Empik", formatType: "paperback", format: "Miękka oprawa", price: "19,99 zł", shipping: "Salon za 0 zł", isBest: true, url: "https://www.empik.com" },
+        ],
+        editions: [
+          { id: "ed-ofarm-1", formatType: "hardcover", publisher: "Wydawnictwo MUZA", year: 2021, format: "Oprawa twarda", isbn: "9788328716179", coverDesc: "Wydanie ilustrowane" },
+          { id: "ed-ofarm-2", formatType: "paperback", publisher: "Wydawnictwo Vesper", year: 2021, format: "Oprawa miękka ze skrzydełkami", isbn: "9788377313886", coverDesc: "Przekład Szymona Żuchowskiego" },
+        ],
+      },
+      {
+        id: "orwell-dno",
+        title: "Na dnie w Paryżu i w Londynie",
+        volume: 3,
+        formatType: "paperback",
+        cover: "",
+        prices: [
+          { store: "Świat Książki", formatType: "paperback", format: "Miękka oprawa", price: "27,90 zł", shipping: "Dostępne", isBest: true, url: "https://www.swiatksiazki.pl" },
+        ],
+        editions: [
+          { id: "ed-odno-1", formatType: "paperback", publisher: "Wydawnictwo Bellona", year: 2021, format: "Oprawa miękka", isbn: "9788311162464", coverDesc: "Wydanie autobiograficzne" },
+        ],
+      },
+      {
+        id: "orwell-katalonia",
+        title: "W hołdzie Katalonii",
+        volume: 4,
+        formatType: "paperback",
+        cover: "",
+        prices: [
+          { store: "TaniaKsiążka.pl", formatType: "paperback", format: "Miękka oprawa", price: "26,50 zł", shipping: "Wysyłka 24h", isBest: true, url: "https://www.taniaksiazka.pl" },
+        ],
+        editions: [
+          { id: "ed-okat-1", formatType: "paperback", publisher: "Wydawnictwo Bellona", year: 2021, format: "Oprawa miękka", isbn: "9788311162471", coverDesc: "Reportaż z hiszpańskiej wojny domowej" },
+        ],
+      },
+    ],
+  },
   {
     seriesId: "witcher",
     seriesName: "Saga o Wiedźminie",

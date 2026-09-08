@@ -42,16 +42,24 @@ export function cleanAuthor(rawAuthor?: string): string {
 }
 
 /**
- * Normalizes title string:
- * "Ostatnie życzenie / Andrzej Sapkowski" -> "Ostatnie życzenie"
+ * Normalizes and extracts Polish title from BN catalog record.
  */
 export function cleanTitle(rawTitle?: string): string {
   if (!rawTitle) return "";
-  const slashIdx = rawTitle.indexOf("/");
+  let base = rawTitle.trim();
+  const slashIdx = base.indexOf("/");
   if (slashIdx !== -1) {
-    return rawTitle.substring(0, slashIdx).trim();
+    base = base.substring(0, slashIdx).trim();
   }
-  return rawTitle.trim();
+  // BN format: "Original title (pol.) Polish title" -> prefer Polish title
+  const polIdx = base.indexOf("(pol.)");
+  if (polIdx !== -1) {
+    const afterPol = base.substring(polIdx + 6).trim();
+    if (afterPol.length > 0) {
+      base = afterPol;
+    }
+  }
+  return base.replace(/[,.;:/]+$/, "").trim();
 }
 
 /**
