@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Series, Book, FormatFilter, StatusFilter, Language, UserAccount } from "@/types";
+import { Series, Book, FormatFilter, StatusFilter, Language, UserAccount, ReadingStatus } from "@/types";
 import { translations } from "@/data/mockData";
 import { Check, Plus, ChevronDown, ChevronUp } from "lucide-react";
 import { BookCover } from "./BookCover";
@@ -15,6 +15,7 @@ interface SeriesCardProps {
   onOpenBookModal: (book: Book, series: Series) => void;
   onOpenAuthorModal: (authorName: string) => void;
   onToggleOwned: (bookId: string, defaultEditionId: string) => void;
+  onUpdateReadingStatus?: (bookId: string, status: ReadingStatus) => void;
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
 }
@@ -28,6 +29,7 @@ export const SeriesCard: React.FC<SeriesCardProps> = ({
   onOpenBookModal,
   onOpenAuthorModal,
   onToggleOwned,
+  onUpdateReadingStatus,
   isCollapsed,
   onToggleCollapse,
 }) => {
@@ -63,6 +65,8 @@ export const SeriesCard: React.FC<SeriesCardProps> = ({
     // Status filter
     if (statusFilter === "owned" && !isOwned) return false;
     if (statusFilter === "missing" && isOwned) return false;
+    if (statusFilter === "reading" && currentUser?.readingStatus?.[book.id] !== "reading") return false;
+    if (statusFilter === "read" && currentUser?.readingStatus?.[book.id] !== "read") return false;
 
     return true;
   });
@@ -216,6 +220,23 @@ export const SeriesCard: React.FC<SeriesCardProps> = ({
                   <span className="absolute top-2 right-2 px-1.5 py-0.5 rounded bg-gray-900/85 backdrop-blur-sm text-[10px] font-semibold text-gray-300">
                     {book.formatType === "hardcover" ? "📖 Twarda" : "📕 Miękka"}
                   </span>
+
+                  {/* Reading status pill on cover */}
+                  {currentUser?.readingStatus?.[book.id] === "reading" && (
+                    <span className="absolute bottom-2 left-2 px-2 py-0.5 rounded-md bg-amber-500 text-black text-[10px] font-extrabold flex items-center gap-1 shadow-lg ring-1 ring-amber-300 animate-pulse">
+                      📖 {lang === "pl" ? "Czytam" : "Reading"}
+                    </span>
+                  )}
+                  {currentUser?.readingStatus?.[book.id] === "read" && (
+                    <span className="absolute bottom-2 left-2 px-2 py-0.5 rounded-md bg-emerald-600 text-white text-[10px] font-bold flex items-center gap-1 shadow-lg ring-1 ring-emerald-400">
+                      ✓ {lang === "pl" ? "Przeczytana" : "Read"}
+                    </span>
+                  )}
+                  {currentUser?.readingStatus?.[book.id] === "wishlist" && (
+                    <span className="absolute bottom-2 left-2 px-2 py-0.5 rounded-md bg-purple-600 text-white text-[10px] font-bold flex items-center gap-1 shadow-lg ring-1 ring-purple-400">
+                      ⭐ {lang === "pl" ? "Chcę" : "Wishlist"}
+                    </span>
+                  )}
                 </div>
 
                 {/* Title */}
@@ -250,17 +271,48 @@ export const SeriesCard: React.FC<SeriesCardProps> = ({
                   </span>
                 )}
 
-                <button
-                  onClick={() => onToggleOwned(book.id, book.editions[0]?.id || "default")}
-                  className={`p-1.5 rounded-lg text-xs font-semibold transition ${
-                    isOwned
-                      ? "bg-emerald-950/40 text-emerald-300 hover:bg-rose-950/50 hover:text-rose-300"
-                      : "bg-brand-600/30 text-brand-300 hover:bg-brand-600 hover:text-white"
-                  }`}
-                  title={isOwned ? t.removeOwned : t.markOwned}
-                >
-                  {isOwned ? <Check className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
-                </button>
+                <div className="flex items-center gap-1">
+                  {onUpdateReadingStatus && isOwned && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const current = currentUser?.readingStatus?.[book.id];
+                        const nextStatus: ReadingStatus =
+                          current === "reading" ? "read" : current === "read" ? "unread" : "reading";
+                        onUpdateReadingStatus(book.id, nextStatus);
+                      }}
+                      className={`p-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1 ${
+                        currentUser?.readingStatus?.[book.id] === "reading"
+                          ? "bg-amber-500/25 text-amber-300 border border-amber-500/40"
+                          : currentUser?.readingStatus?.[book.id] === "read"
+                          ? "bg-emerald-500/25 text-emerald-300 border border-emerald-500/40"
+                          : "bg-gray-800 text-gray-400 hover:text-white"
+                      }`}
+                      title={
+                        currentUser?.readingStatus?.[book.id] === "reading"
+                          ? (lang === "pl" ? "Teraz czytasz. Kliknij, aby oznaczyć jako przeczytaną." : "Reading now. Click to mark as read.")
+                          : currentUser?.readingStatus?.[book.id] === "read"
+                          ? (lang === "pl" ? "Przeczytana. Kliknij, aby zresetować status." : "Finished. Click to reset.")
+                          : (lang === "pl" ? "Kliknij, aby oznaczyć: Czytam teraz" : "Click to mark as reading")
+                      }
+                    >
+                      <span>{currentUser?.readingStatus?.[book.id] === "reading" ? "📖" : currentUser?.readingStatus?.[book.id] === "read" ? "🎓" : "🔖"}</span>
+                    </button>
+                  )}
+
+                  <button
+                    onClick={() => onToggleOwned(book.id, book.editions[0]?.id || "default")}
+                    className={`p-1.5 rounded-lg text-xs font-semibold transition ${
+                      isOwned
+                        ? "bg-emerald-950/40 text-emerald-300 hover:bg-rose-950/50 hover:text-rose-300"
+                        : "bg-brand-600/30 text-brand-300 hover:bg-brand-600 hover:text-white"
+                    }`}
+                    title={isOwned ? t.removeOwned : t.markOwned}
+                  >
+                    {isOwned ? <Check className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
+                  </button>
+                </div>
               </div>
             </div>
           );

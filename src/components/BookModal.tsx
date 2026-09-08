@@ -1,9 +1,9 @@
 "use client";
 
 import React, { useState } from "react";
-import { Book, Series, FormatFilter, Language, UserAccount } from "@/types";
+import { Book, Series, FormatFilter, Language, UserAccount, ReadingStatus } from "@/types";
 import { translations } from "@/data/mockData";
-import { X, Check, ShoppingBag, BookOpen } from "lucide-react";
+import { X, Check, ShoppingBag, BookOpen, BookmarkCheck } from "lucide-react";
 import { BookCover } from "./BookCover";
 
 interface BookModalProps {
@@ -15,6 +15,7 @@ interface BookModalProps {
   onSelectEdition: (bookId: string, editionId: string) => void;
   onToggleOwned: (bookId: string, editionId: string) => void;
   onOpenAuthor: (authorName: string) => void;
+  onUpdateReadingStatus?: (bookId: string, status: ReadingStatus) => void;
 }
 
 export const BookModal: React.FC<BookModalProps> = ({
@@ -26,6 +27,7 @@ export const BookModal: React.FC<BookModalProps> = ({
   onSelectEdition,
   onToggleOwned,
   onOpenAuthor,
+  onUpdateReadingStatus,
 }) => {
   const t = translations[lang];
   const [modalFormat, setModalFormat] = useState<FormatFilter>("all");
@@ -104,6 +106,75 @@ export const BookModal: React.FC<BookModalProps> = ({
 
         {/* Modal Body */}
         <div className="p-5 sm:p-6 overflow-y-auto space-y-6 flex-1">
+          {/* Reading Status Selector */}
+          {onUpdateReadingStatus && (
+            <div className="p-4 rounded-xl bg-gray-950/70 border border-brand-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-md">
+              <div>
+                <h4 className="text-xs font-bold uppercase tracking-wider text-white flex items-center gap-1.5">
+                  <BookmarkCheck className="w-4 h-4 text-brand-400" />
+                  <span>{lang === "pl" ? "Twój status czytania:" : "Your Reading Status:"}</span>
+                </h4>
+                <p className="text-xs text-gray-400 mt-0.5">
+                  {lang === "pl"
+                    ? "Zaznacz, czy czytasz ten tom teraz, czy już go ukończyłeś:"
+                    : "Mark if you are currently reading this volume or completed it:"}
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => onUpdateReadingStatus(book.id, "reading")}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                    currentUser?.readingStatus?.[book.id] === "reading"
+                      ? "bg-amber-500 text-black shadow-lg shadow-amber-500/25 ring-2 ring-amber-400"
+                      : "bg-gray-800 text-amber-300 hover:bg-gray-700"
+                  }`}
+                >
+                  <span>📖</span>
+                  <span>{lang === "pl" ? "Czytam teraz" : "Reading"}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => onUpdateReadingStatus(book.id, "read")}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                    currentUser?.readingStatus?.[book.id] === "read"
+                      ? "bg-emerald-600 text-white shadow-lg shadow-emerald-600/25 ring-2 ring-emerald-400"
+                      : "bg-gray-800 text-emerald-400 hover:bg-gray-700"
+                  }`}
+                >
+                  <span>✅</span>
+                  <span>{lang === "pl" ? "Przeczytana" : "Read"}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => onUpdateReadingStatus(book.id, "wishlist")}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                    currentUser?.readingStatus?.[book.id] === "wishlist"
+                      ? "bg-purple-600 text-white shadow-lg shadow-purple-600/25 ring-2 ring-purple-400"
+                      : "bg-gray-800 text-purple-300 hover:bg-gray-700"
+                  }`}
+                >
+                  <span>⭐</span>
+                  <span>{lang === "pl" ? "Chcę przeczytać" : "Want to read"}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => onUpdateReadingStatus(book.id, "unread")}
+                  className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer ${
+                    !currentUser?.readingStatus?.[book.id] || currentUser?.readingStatus?.[book.id] === "unread"
+                      ? "bg-gray-700 text-gray-200"
+                      : "bg-gray-800/60 text-gray-400 hover:bg-gray-700"
+                  }`}
+                >
+                  <span>{lang === "pl" ? "Na półce" : "On shelf"}</span>
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Format Selector */}
           <div className="p-4 rounded-xl bg-gray-950/60 border border-gray-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>

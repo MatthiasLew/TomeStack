@@ -10,6 +10,7 @@ import {
   Series,
   UserAccount,
   BindingFormat,
+  ReadingStatus,
 } from "@/types";
 import {
   authorsDatabase,
@@ -131,11 +132,20 @@ export default function Home() {
     const avgCompletion =
       seriesList.length > 0 ? Math.round(seriesCompletionSum / seriesList.length) : 0;
 
+    const readingBooks = Object.values(currentUser?.readingStatus || {}).filter(
+      (s) => s === "reading"
+    ).length;
+    const readBooks = Object.values(currentUser?.readingStatus || {}).filter(
+      (s) => s === "read"
+    ).length;
+
     return {
       total,
       owned,
       missing: total - owned,
       avgCompletion,
+      readingBooks,
+      readBooks,
     };
   }, [seriesList, currentUser]);
 
@@ -187,6 +197,23 @@ export default function Home() {
     saveUserBookToCloud(currentUser.id, bookId, editionId);
 
     const updatedUser = { ...currentUser, ownedBooks: currentOwned };
+    setCurrentUser(updatedUser);
+  };
+
+  const handleUpdateReadingStatus = (bookId: string, status: ReadingStatus) => {
+    if (!currentUser) {
+      setIsAuthOpen(true);
+      return;
+    }
+
+    const currentReading = { ...(currentUser.readingStatus || {}) };
+    if (status === "unread") {
+      delete currentReading[bookId];
+    } else {
+      currentReading[bookId] = status;
+    }
+
+    const updatedUser = { ...currentUser, readingStatus: currentReading };
     setCurrentUser(updatedUser);
   };
 
@@ -318,6 +345,8 @@ export default function Home() {
           ownedBooks={stats.owned}
           missingBooks={stats.missing}
           avgCompletion={stats.avgCompletion}
+          readingBooks={stats.readingBooks}
+          readBooks={stats.readBooks}
           lang={lang}
         />
 
@@ -392,6 +421,7 @@ export default function Home() {
                   }
                   onOpenAuthorModal={(author) => setActiveAuthorName(author)}
                   onToggleOwned={handleToggleOwned}
+                  onUpdateReadingStatus={handleUpdateReadingStatus}
                 />
               ))
             )}
@@ -465,6 +495,7 @@ export default function Home() {
                 }
                 onOpenAuthorModal={(author) => setActiveAuthorName(author)}
                 onToggleOwned={handleToggleOwned}
+                onUpdateReadingStatus={handleUpdateReadingStatus}
               />
             ))}
           </div>
@@ -482,6 +513,7 @@ export default function Home() {
           onSelectEdition={handleSelectEdition}
           onToggleOwned={handleToggleOwned}
           onOpenAuthor={(author) => setActiveAuthorName(author)}
+          onUpdateReadingStatus={handleUpdateReadingStatus}
         />
       )}
 

@@ -1,6 +1,7 @@
 export type BindingFormat = 'hardcover' | 'paperback';
 export type FormatFilter = 'all' | 'hardcover' | 'paperback';
-export type StatusFilter = 'all' | 'owned' | 'missing';
+export type ReadingStatus = 'unread' | 'reading' | 'read' | 'wishlist';
+export type StatusFilter = 'all' | 'owned' | 'missing' | 'reading' | 'read';
 export type ActiveTab = 'series' | 'missing' | 'all';
 export type Language = 'pl' | 'en';
 
@@ -61,4 +62,5 @@ export interface UserAccount {
   role: string;
   avatar: string;
   ownedBooks: Record<string, string>; // bookId -> editionId
+  readingStatus?: Record<string, ReadingStatus>; // bookId -> reading status
 }

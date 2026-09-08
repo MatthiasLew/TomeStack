@@ -11,6 +11,8 @@ interface StatsCardsProps {
   missingBooks: number;
   avgCompletion: number;
   lang: Language;
+  readingBooks?: number;
+  readBooks?: number;
 }
 
 export const StatsCards: React.FC<StatsCardsProps> = ({
@@ -19,6 +21,8 @@ export const StatsCards: React.FC<StatsCardsProps> = ({
   missingBooks,
   avgCompletion,
   lang,
+  readingBooks,
+  readBooks,
 }) => {
   const t = translations[lang];
 
@@ -71,6 +75,32 @@ export const StatsCards: React.FC<StatsCardsProps> = ({
           <TrendingUp className="w-6 h-6" />
         </div>
       </div>
+
+      {(readingBooks !== undefined || readBooks !== undefined) && (
+        <div className="col-span-full card-glass p-3 px-4 rounded-xl flex flex-wrap items-center justify-between gap-3 text-xs bg-gray-950/60 border border-gray-800">
+          <div className="flex items-center gap-2">
+            <span className="text-gray-400 font-semibold uppercase tracking-wider text-[11px]">
+              {lang === "pl" ? "Aktywność czytelnicza:" : "Reading Activity:"}
+            </span>
+          </div>
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="flex items-center gap-1.5 font-bold text-amber-400">
+              <span className="text-sm">📖</span>
+              <span>{lang === "pl" ? "W trakcie czytania:" : "Currently reading:"}</span>
+              <span className="px-2 py-0.5 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-300">
+                {readingBooks || 0}
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5 font-bold text-emerald-400">
+              <span className="text-sm">🎓</span>
+              <span>{lang === "pl" ? "Przeczytane / Ukończone:" : "Finished / Read:"}</span>
+              <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-300">
+                {readBooks || 0}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

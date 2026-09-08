@@ -104,6 +104,28 @@ export const FilterToolbar: React.FC<FilterToolbarProps> = ({
           <span>🎯</span>
           <span>{lang === "pl" ? "Tylko braki" : "Missing only"}</span>
         </button>
+        <button
+          onClick={() => onSetStatusFilter("reading")}
+          className={`px-3 py-1 text-xs font-semibold rounded-lg transition flex items-center gap-1 ${
+            statusFilter === "reading"
+              ? "bg-amber-500 text-black font-bold shadow"
+              : "bg-gray-800 text-amber-400 hover:bg-gray-700"
+          }`}
+        >
+          <span>📖</span>
+          <span>{lang === "pl" ? "Czytane" : "Reading"}</span>
+        </button>
+        <button
+          onClick={() => onSetStatusFilter("read")}
+          className={`px-3 py-1 text-xs font-semibold rounded-lg transition flex items-center gap-1 ${
+            statusFilter === "read"
+              ? "bg-emerald-600 text-white shadow"
+              : "bg-gray-800 text-emerald-300 hover:bg-gray-700"
+          }`}
+        >
+          <span>🎓</span>
+          <span>{lang === "pl" ? "Przeczytane" : "Finished"}</span>
+        </button>
       </div>
 
       {/* View Tabs Switcher */}
