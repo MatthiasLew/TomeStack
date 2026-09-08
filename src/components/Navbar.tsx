@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { BookOpen, Search, Plus, User, LogOut } from "lucide-react";
+import { BookOpen, Search, Plus, User, LogOut, Camera } from "lucide-react";
 import { UserAccount, Language } from "@/types";
 import { translations } from "@/data/mockData";
 
@@ -12,6 +12,7 @@ interface NavbarProps {
   onOpenAuth: () => void;
   onLogout: () => void;
   onOpenAddBook: () => void;
+  onOpenScanner?: () => void;
   searchQuery: string;
   onSearchChange: (q: string) => void;
 }
@@ -23,6 +24,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenAuth,
   onLogout,
   onOpenAddBook,
+  onOpenScanner,
   searchQuery,
   onSearchChange,
 }) => {
@@ -63,6 +65,20 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         {/* Right Actions */}
         <div className="flex items-center gap-3">
+          {/* Quick Barcode Scanner Button */}
+          {onOpenScanner && (
+            <button
+              onClick={onOpenScanner}
+              title={lang === "pl" ? "Skaner kodów kreskowych" : "Barcode camera scanner"}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-brand-500/30 bg-brand-950/40 hover:bg-brand-900/50 text-xs font-semibold text-brand-300 transition shadow"
+            >
+              <Camera className="w-3.5 h-3.5 text-brand-400" />
+              <span className="hidden sm:inline">
+                {lang === "pl" ? "Skanuj ISBN" : "Scan ISBN"}
+              </span>
+            </button>
+          )}
+
           {/* Language Switcher */}
           <button
             onClick={onToggleLang}
@@ -113,10 +129,10 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* Add Book Button */}
           <button
             onClick={onOpenAddBook}
-            className="hidden sm:flex items-center gap-1.5 bg-brand-600 hover:bg-brand-500 text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition shadow-md shadow-brand-900/40"
+            className="flex items-center gap-1.5 bg-brand-600 hover:bg-brand-500 text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition shadow-md shadow-brand-900/40"
           >
             <Plus className="w-4 h-4" />
-            <span>{t.addBookBtn}</span>
+            <span className="hidden sm:inline">{t.addBookBtn}</span>
           </button>
         </div>
       </div>

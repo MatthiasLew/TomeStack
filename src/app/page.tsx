@@ -26,6 +26,7 @@ import { BookModal } from "@/components/BookModal";
 import { AuthorModal } from "@/components/AuthorModal";
 import { AddBookModal } from "@/components/AddBookModal";
 import { AuthModal } from "@/components/AuthModal";
+import { BarcodeScannerModal } from "@/components/BarcodeScannerModal";
 
 export default function Home() {
   const [lang, setLang] = useState<Language>("pl");
@@ -51,6 +52,7 @@ export default function Home() {
   const [activeAuthorName, setActiveAuthorName] = useState<string | null>(null);
   const [isAddBookOpen, setIsAddBookOpen] = useState(false);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
 
   // Calculation of overall statistics
   const stats = useMemo(() => {
@@ -247,6 +249,7 @@ export default function Home() {
         onOpenAuth={() => setIsAuthOpen(true)}
         onLogout={() => setCurrentUser(null)}
         onOpenAddBook={() => setIsAddBookOpen(true)}
+        onOpenScanner={() => setIsScannerOpen(true)}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
       />
@@ -380,6 +383,40 @@ export default function Home() {
           onClose={() => setIsAuthOpen(false)}
           onSelectUser={handleSwitchUser}
           onCustomLogin={handleCustomLogin}
+        />
+      )}
+
+      {/* Direct Global Barcode Scanner Modal */}
+      {isScannerOpen && (
+        <BarcodeScannerModal
+          lang={lang}
+          onClose={() => setIsScannerOpen(false)}
+          onDetected={(scannedIsbn) => {
+            setIsScannerOpen(false);
+            // Open AddBookModal with pre-queried or pre-filled ISBN
+            setIsAddBookOpen(true);
+            setTimeout(() => {
+              // Also trigger lookup endpoint to automatically inject new volume
+              fetch(`/api/books/lookup?isbn=${encodeURIComponent(scannedIsbn)}`)
+                .then((r) => r.json())
+                .then((json) => {
+                  if (json && json.data) {
+                    const b = json.data;
+                    handleAddBook({
+                      title: b.title || `ISBN ${scannedIsbn}`,
+                      author: b.author || "Nieznany autor",
+                      series: lang === "pl" ? "Zeskanowane książki" : "Scanned books",
+                      formatType: b.formatType || "hardcover",
+                      isbn: scannedIsbn,
+                    });
+                    setIsAddBookOpen(false);
+                  }
+                })
+                .catch(() => {
+                  // Fallback: AddBookModal stays open for manual completion
+                });
+            }, 200);
+          }}
         />
       )}
     </div>

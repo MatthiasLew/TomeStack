@@ -2,7 +2,8 @@
 
 import React, { useState } from "react";
 import { BindingFormat, Language } from "@/types";
-import { X, BookOpen, Search, Loader2 } from "lucide-react";
+import { X, BookOpen, Search, Loader2, Camera } from "lucide-react";
+import { BarcodeScannerModal } from "./BarcodeScannerModal";
 
 interface AddBookModalProps {
   lang: Language;
@@ -26,6 +27,7 @@ export const AddBookModal: React.FC<AddBookModalProps> = ({
   const [series, setSeries] = useState("");
   const [formatType, setFormatType] = useState<BindingFormat>("hardcover");
   const [isbn, setIsbn] = useState("");
+  const [showScanner, setShowScanner] = useState(false);
 
   // Multi-Provider Book Fetch State
   const [isLoadingLookup, setIsLoadingLookup] = useState(false);
@@ -191,16 +193,37 @@ export const AddBookModal: React.FC<AddBookModalProps> = ({
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="text-xs text-gray-400 block mb-1">
-              {lang === "pl" ? "Numer ISBN (10 lub 13 cyfr)" : "ISBN-13 (10 or 13 digits)"}
-            </label>
-            <input
-              type="text"
-              value={isbn}
-              onChange={(e) => setIsbn(e.target.value)}
-              placeholder="np. 9788375780635"
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg p-2.5 text-sm text-white focus:outline-none focus:border-brand-500 font-mono"
-            />
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-xs text-gray-400">
+                {lang === "pl" ? "Numer ISBN (10 lub 13 cyfr)" : "ISBN-13 (10 or 13 digits)"}
+              </label>
+              <button
+                type="button"
+                onClick={() => setShowScanner(true)}
+                className="inline-flex items-center gap-1 text-[11px] font-semibold text-brand-400 hover:text-brand-300 transition"
+              >
+                <Camera className="w-3.5 h-3.5" />
+                <span>{lang === "pl" ? "Skanuj aparatem" : "Scan with camera"}</span>
+              </button>
+            </div>
+            <div className="relative">
+              <input
+                type="text"
+                value={isbn}
+                onChange={(e) => setIsbn(e.target.value)}
+                placeholder="np. 9788375780635"
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg p-2.5 pr-24 text-sm text-white focus:outline-none focus:border-brand-500 font-mono"
+              />
+              <button
+                type="button"
+                onClick={() => setShowScanner(true)}
+                className="absolute right-1.5 top-1.5 bottom-1.5 px-2.5 rounded bg-gray-700 hover:bg-gray-600 text-gray-200 text-xs font-medium flex items-center gap-1 transition"
+                title={lang === "pl" ? "Uruchom skaner kodów kreskowych" : "Open camera scanner"}
+              >
+                <Camera className="w-3.5 h-3.5 text-brand-400" />
+                <span>Skaner</span>
+              </button>
+            </div>
           </div>
 
           <div>
@@ -274,6 +297,37 @@ export const AddBookModal: React.FC<AddBookModalProps> = ({
             </button>
           </div>
         </form>
+
+        {/* Camera Barcode Scanner Modal */}
+        {showScanner && (
+          <BarcodeScannerModal
+            lang={lang}
+            onClose={() => setShowScanner(false)}
+            onDetected={(scannedIsbn) => {
+              setIsbn(scannedIsbn);
+              setShowScanner(false);
+              // Trigger automatic lookup immediately after barcode detected
+              setTimeout(() => {
+                fetch(`/api/books/lookup?isbn=${encodeURIComponent(scannedIsbn)}`)
+                  .then((res) => res.json())
+                  .then((json) => {
+                    if (json && json.data) {
+                      const b = json.data;
+                      setTitle(b.title || "");
+                      setAuthor(b.author || "");
+                      setFormatType(b.formatType || "hardcover");
+                      setLookupFeedback(
+                        `✓ Zeskanowano kod kreskowy! Pobrano dane: ${b.publisher || ""} (${b.publicationYear || ""})`
+                      );
+                    }
+                  })
+                  .catch(() => {
+                    setLookupFeedback(`✓ Zeskanowano kod: ${scannedIsbn}. Uzupełnij pozostałe pola.`);
+                  });
+              }, 150);
+            }}
+          />
+        )}
       </div>
     </div>
   );
