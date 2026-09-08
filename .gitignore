@@ -1,0 +1,38 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Next.js build output
+.next/
+out/
+build/
+dist/
+
+# AI Dev tools local state & cache
+.ai/logs/
+.ai/reports/
+.ai/context/
+.ai/cache/
+.ai/runtime/
+.ai/tmp/
+.ai/performance/
+
+# Environment files
+.env
+.env*.local
+
+# Operating System
+.DS_Store
+Thumbs.db
+
+# IDE and editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Debug logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

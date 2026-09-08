@@ -1,0 +1,1887 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TomeStack – Series & Editions Book Tracker</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Lora:ital,wght@0,500;0,600;1,400&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+            serif: ['Lora', 'serif'],
+          },
+          colors: {
+            brand: {
+              50: '#fdf8f6',
+              100: '#f2e8e5',
+              500: '#e05a47',
+              600: '#c2410c',
+              700: '#9a3412',
+              800: '#7c2d12',
+              900: '#431407',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      background-color: #0b0f17;
+      color: #e6edf3;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+    .card-glass {
+      background: rgba(18, 24, 38, 0.85);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(48, 54, 75, 0.7);
+    }
+    .badge-owned {
+      background-color: rgba(35, 134, 54, 0.2);
+      border: 1px solid rgba(46, 160, 67, 0.5);
+      color: #3fb950;
+    }
+    .badge-missing {
+      background-color: rgba(218, 54, 51, 0.2);
+      border: 1px solid rgba(248, 81, 73, 0.5);
+      color: #f85149;
+    }
+    .hover-author {
+      transition: all 0.2s ease;
+    }
+    .hover-author:hover {
+      color: #fb923c;
+      text-decoration: underline;
+    }
+    /* Custom scrollbars */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0f141f;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #232d3f;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #37445c;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col antialiased selection:bg-brand-500 selection:text-white">
+
+  <!-- TOP NAVBAR -->
+  <header class="sticky top-0 z-30 border-b border-gray-800/80 bg-gray-950/85 backdrop-blur-md">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+      
+      <!-- Brand Logo -->
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-amber-500 flex items-center justify-center text-white shadow-lg shadow-brand-900/40">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+          </svg>
+        </div>
+        <div>
+          <h1 class="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+            <span>TomeStack</span>
+            <span class="text-[10px] px-2 py-0.5 rounded-full bg-brand-500/20 text-brand-400 font-semibold border border-brand-500/30">v2.2 Auth</span>
+          </h1>
+          <p id="tSubheader" class="text-xs text-gray-400">Twoja prywatna biblioteczka i tracker wydań</p>
+        </div>
+      </div>
+
+      <!-- Quick Search Bar -->
+      <div class="flex-1 max-w-md hidden md:block">
+        <div class="relative">
+          <input type="text" id="searchInput" placeholder="Szukaj tytułu, autora (np. Sapkowski), cyklu lub ISBN..." 
+                 class="w-full bg-gray-900/90 border border-gray-700/80 rounded-lg pl-10 pr-4 py-2 text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition">
+          <svg class="w-4 h-4 absolute left-3.5 top-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+        </div>
+      </div>
+
+      <!-- Header Right: Language Switcher, User Auth & Add Book -->
+      <div class="flex items-center gap-3">
+        
+        <!-- Language Switcher Button -->
+        <button onclick="toggleLanguage()" class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-gray-700 bg-gray-900 hover:bg-gray-800 text-xs font-semibold text-gray-300 transition">
+          <span id="langFlag">🇬🇧</span>
+          <span id="langLabel">English</span>
+        </button>
+
+        <!-- User Authentication Widget -->
+        <div id="authNavWidget" class="flex items-center">
+          <!-- Dynamically populated by JS (Login button OR User Profile menu) -->
+        </div>
+
+        <!-- Add Book Button -->
+        <button onclick="openAddModal()" class="hidden sm:flex items-center gap-2 bg-brand-600 hover:bg-brand-500 text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition shadow-md shadow-brand-900/40">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+          </svg>
+          <span id="tAddBookBtn">Dodaj książkę</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- USER ACTIVE LIBRARY BANNER -->
+  <div id="userLibraryHeader" class="border-b border-gray-800/80 bg-gray-950/40 py-2.5">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-wrap items-center justify-between gap-3 text-xs">
+      <div class="flex items-center gap-2">
+        <span class="text-base" id="activeUserEmoji">👤</span>
+        <span class="text-gray-400 font-medium">Aktywna biblioteczka:</span>
+        <span id="activeUserName" class="font-bold text-white bg-gray-800 px-2 py-0.5 rounded border border-gray-700">Kamil</span>
+        <span id="activeUserBadge" class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-semibold border border-emerald-500/30">Zalogowany</span>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <span class="text-gray-400 hidden sm:inline">Szybkie przełączanie kont testowych:</span>
+        <div class="flex items-center gap-1.5">
+          <button onclick="switchUserAccount('kamil')" id="userBtn-kamil" class="px-2 py-1 rounded text-xs font-semibold bg-brand-600 text-white transition">
+            👤 Kamil (Fantasy)
+          </button>
+          <button onclick="switchUserAccount('anna')" id="userBtn-anna" class="px-2 py-1 rounded text-xs font-semibold bg-gray-800 text-gray-300 hover:bg-gray-700 transition">
+            👤 Anna (Potter & Tolkien)
+          </button>
+          <button onclick="switchUserAccount('guest')" id="userBtn-guest" class="px-2 py-1 rounded text-xs font-semibold bg-gray-800 text-gray-400 hover:bg-gray-700 transition">
+            👁️ Gość (Wylogowany)
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- GUEST ALERT BANNER (Visible only when logged out) -->
+  <div id="guestAlertBanner" class="hidden bg-amber-950/30 border-b border-amber-800/40 py-2.5 px-4 text-xs text-center text-amber-300">
+    <span>⚠️ Przeglądasz katalog w trybie gościa. </span>
+    <button onclick="openAuthModal()" class="font-bold underline text-amber-200 hover:text-white ml-1">Zaloguj się lub utwórz konto</button>, aby zapisać swoje książki i śledzić serie!
+  </div>
+
+  <!-- MAIN CONTAINER -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+    
+    <!-- STATS BANNER -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div class="card-glass p-4 rounded-xl flex items-center justify-between">
+        <div>
+          <p id="tStatTotalLabel" class="text-xs text-gray-400 uppercase tracking-wider font-semibold">Wszystkie tomy</p>
+          <p class="text-2xl font-bold text-white mt-1" id="statTotalBooks">0</p>
+        </div>
+        <div class="p-3 bg-blue-500/10 text-blue-400 rounded-lg text-xl">📚</div>
+      </div>
+
+      <div class="card-glass p-4 rounded-xl flex items-center justify-between">
+        <div>
+          <p id="tStatOwnedLabel" class="text-xs text-gray-400 uppercase tracking-wider font-semibold">Posiadane przez Ciebie</p>
+          <p class="text-2xl font-bold text-emerald-400 mt-1" id="statOwned">0</p>
+        </div>
+        <div class="p-3 bg-emerald-500/10 text-emerald-400 rounded-lg text-xl">✅</div>
+      </div>
+
+      <div class="card-glass p-4 rounded-xl flex items-center justify-between">
+        <div>
+          <p id="tStatMissingLabel" class="text-xs text-gray-400 uppercase tracking-wider font-semibold">Braki do Twojego kompletu</p>
+          <p class="text-2xl font-bold text-rose-400 mt-1" id="statMissing">0</p>
+        </div>
+        <div class="p-3 bg-rose-500/10 text-rose-400 rounded-lg text-xl">🎯</div>
+      </div>
+
+      <div class="card-glass p-4 rounded-xl flex items-center justify-between">
+        <div>
+          <p id="tStatAvgLabel" class="text-xs text-gray-400 uppercase tracking-wider font-semibold">Ukończenie Twoich serii</p>
+          <p class="text-2xl font-bold text-amber-400 mt-1" id="statAvg">0%</p>
+        </div>
+        <div class="p-3 bg-amber-500/10 text-amber-400 rounded-lg text-xl">📈</div>
+      </div>
+    </div>
+
+    <!-- FILTER & PREFERENCES TOOLBAR -->
+    <div class="card-glass rounded-xl p-4 flex flex-wrap items-center justify-between gap-4">
+      <!-- Format Filter Pills -->
+      <div class="flex flex-wrap items-center gap-2">
+        <span id="tFilterFormatLabel" class="text-xs font-bold uppercase tracking-wider text-gray-400 mr-1">Oprawa:</span>
+        <button onclick="setGlobalFormatFilter('all')" id="filter-format-all" class="px-3 py-1 text-xs font-semibold rounded-lg bg-brand-600 text-white transition">
+          Wszystkie oprawy
+        </button>
+        <button onclick="setGlobalFormatFilter('hardcover')" id="filter-format-hardcover" class="px-3 py-1 text-xs font-semibold rounded-lg bg-gray-800 text-gray-300 hover:bg-gray-700 transition flex items-center gap-1">
+          <span>📖 Twarda oprawa</span>
+        </button>
+        <button onclick="setGlobalFormatFilter('paperback')" id="filter-format-paperback" class="px-3 py-1 text-xs font-semibold rounded-lg bg-gray-800 text-gray-300 hover:bg-gray-700 transition flex items-center gap-1">
+          <span>📕 Miękka oprawa</span>
+        </button>
+      </div>
+
+      <!-- Status Filter Pills -->
+      <div class="flex flex-wrap items-center gap-2">
+        <span id="tFilterStatusLabel" class="text-xs font-bold uppercase tracking-wider text-gray-400 mr-1">Status:</span>
+        <button onclick="setGlobalStatusFilter('all')" id="filter-status-all" class="px-3 py-1 text-xs font-semibold rounded-lg bg-brand-600 text-white transition">
+          Wszystkie
+        </button>
+        <button onclick="setGlobalStatusFilter('owned')" id="filter-status-owned" class="px-3 py-1 text-xs font-semibold rounded-lg bg-gray-800 text-gray-300 hover:bg-gray-700 transition">
+          Posiadane
+        </button>
+        <button onclick="setGlobalStatusFilter('missing')" id="filter-status-missing" class="px-3 py-1 text-xs font-semibold rounded-lg bg-gray-800 text-gray-300 hover:bg-gray-700 transition">
+          Tylko braki
+        </button>
+      </div>
+    </div>
+
+    <!-- NAVIGATION TABS & TIP -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between border-b border-gray-800 pb-3 gap-3">
+      <div class="flex gap-2">
+        <button onclick="switchTab('series')" id="tab-series-btn" class="px-4 py-2 text-sm font-semibold rounded-lg bg-gray-800 text-white">
+          <span id="tTabSeries">Cykle i Serie</span>
+        </button>
+        <button onclick="switchTab('missing')" id="tab-missing-btn" class="px-4 py-2 text-sm font-semibold rounded-lg text-gray-400 hover:text-white hover:bg-gray-800/50 flex items-center gap-1.5">
+          <span id="tTabMissing">Braki w kolekcji</span>
+          <span id="missingCountBadge" class="text-xs px-2 py-0.2 rounded-full bg-rose-500/20 text-rose-400 font-bold">0</span>
+        </button>
+        <button onclick="switchTab('all')" id="tab-all-btn" class="px-4 py-2 text-sm font-semibold rounded-lg text-gray-400 hover:text-white hover:bg-gray-800/50">
+          <span id="tTabAll">Wszystkie tomy</span>
+        </button>
+      </div>
+
+      <div id="tHintTip" class="text-xs text-gray-400 italic">
+        💡 Każdy zalogowany użytkownik ma własną półkę i niezależne wskaźniki ukończenia serii!
+      </div>
+    </div>
+
+    <!-- TAB 1: CYKLE I SERIE -->
+    <section id="tab-series" class="space-y-6">
+      <div id="seriesContainer" class="grid grid-cols-1 gap-6">
+        <!-- Series rendered by JavaScript -->
+      </div>
+    </section>
+
+    <!-- TAB 2: BRAKUJĄCE TOMY (RADAR BRAKÓW) -->
+    <section id="tab-missing" class="hidden space-y-4">
+      <div class="bg-rose-950/20 border border-rose-800/40 rounded-xl p-4 flex items-center justify-between">
+        <div>
+          <h3 id="tMissingRadarTitle" class="font-bold text-rose-300">Radar Braków do Ukończenia Sagi</h3>
+          <p id="tMissingRadarDesc" class="text-xs text-rose-400/80">Tych tomów brakuje w Twojej biblioteczce. Wybierz oprawę i porównaj najlepsze oferty cenowe.</p>
+        </div>
+      </div>
+      <div id="missingList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <!-- Injected by JS -->
+      </div>
+    </section>
+
+    <!-- TAB 3: WSZYSTKIE TOMY -->
+    <section id="tab-all" class="hidden">
+      <div id="allBooksGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+        <!-- Injected by JS -->
+      </div>
+    </section>
+
+  </main>
+
+  <!-- MODAL: LOGOWANIE I REJESTRACJA UŻYTKOWNIKA -->
+  <div id="authModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+    <div class="bg-gray-900 border border-gray-700 w-full max-w-md rounded-2xl p-6 space-y-5 shadow-2xl">
+      <div class="flex items-center justify-between border-b border-gray-800 pb-3">
+        <div class="flex items-center gap-2">
+          <span class="text-xl">🔐</span>
+          <h3 class="text-lg font-bold text-white">Logowanie do Biblioteczki</h3>
+        </div>
+        <button onclick="closeAuthModal()" class="text-gray-400 hover:text-white p-1">✕</button>
+      </div>
+
+      <!-- Quick Demo Accounts -->
+      <div class="p-3 bg-brand-950/30 border border-brand-700/40 rounded-xl space-y-2">
+        <p class="text-xs font-bold text-brand-300 uppercase tracking-wider">⚡ Szybkie konto demonstracyjne:</p>
+        <div class="grid grid-cols-2 gap-2">
+          <button onclick="loginAsPreset('kamil')" class="p-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-left text-xs font-medium border border-gray-700 transition">
+            <p class="font-bold text-white">👤 Kamil</p>
+            <p class="text-[10px] text-gray-400">Kolekcja Wiedźmin & Diuna</p>
+          </button>
+          <button onclick="loginAsPreset('anna')" class="p-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-left text-xs font-medium border border-gray-700 transition">
+            <p class="font-bold text-white">👤 Anna</p>
+            <p class="text-[10px] text-gray-400">Kolekcja Potter & Tolkien</p>
+          </button>
+        </div>
+      </div>
+
+      <!-- Form (Sign In / Sign Up simulation) -->
+      <div class="space-y-3 pt-1">
+        <div>
+          <label class="text-xs text-gray-400">Twój Adres E-mail</label>
+          <input type="email" id="authEmail" placeholder="twoj.email@domena.pl" value="moje.konto@czytelnik.pl" class="w-full bg-gray-800 border border-gray-700 rounded p-2 text-sm text-white mt-1">
+        </div>
+        <div>
+          <label class="text-xs text-gray-400">Hasło</label>
+          <input type="password" id="authPassword" value="••••••••" class="w-full bg-gray-800 border border-gray-700 rounded p-2 text-sm text-white mt-1">
+        </div>
+        <div>
+          <label class="text-xs text-gray-400">Twoje Imię / Nick do biblioteczki</label>
+          <input type="text" id="authName" placeholder="np. Michał" value="Michał" class="w-full bg-gray-800 border border-gray-700 rounded p-2 text-sm text-white mt-1">
+        </div>
+      </div>
+
+      <!-- Social Logins (Google, GitHub) -->
+      <div class="space-y-2 pt-1">
+        <button onclick="submitCustomLogin()" class="w-full py-2.5 bg-brand-600 hover:bg-brand-500 text-white font-bold rounded-lg text-sm transition shadow-lg shadow-brand-900/30">
+          Zaloguj się do swojej biblioteki
+        </button>
+        <button onclick="loginWithGoogle()" class="w-full py-2 bg-gray-800 hover:bg-gray-700 text-gray-200 font-semibold rounded-lg text-xs transition border border-gray-700 flex items-center justify-center gap-2">
+          <span>🌐</span> Zaloguj przez Google (OAuth)
+        </button>
+      </div>
+
+      <p class="text-[11px] text-gray-500 text-center">W pełnej wersji autoryzację obsługuje Supabase Auth (Row Level Security) gwarantując pełną prywatność Twoich zbiorów.</p>
+    </div>
+  </div>
+
+  <!-- MODAL: PROFIL AUTORA I WSZYSTKIE JEGO DZIEŁA -->
+  <div id="authorModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+    <div class="bg-gray-900 border border-gray-700 w-full max-w-4xl rounded-2xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+      
+      <!-- Author Modal Header -->
+      <div class="p-6 border-b border-gray-800 flex items-center justify-between bg-gradient-to-r from-gray-950 to-gray-900">
+        <div class="flex items-center gap-4">
+          <img id="authorAvatar" src="" class="w-16 h-16 rounded-full object-cover border-2 border-brand-500 shadow-md">
+          <div>
+            <span class="text-xs font-semibold px-2 py-0.5 rounded bg-brand-500/20 text-brand-400 uppercase tracking-wider">Autor / Author</span>
+            <h2 id="authorName" class="text-2xl font-serif font-bold text-white mt-0.5"></h2>
+            <p id="authorOwnershipRatio" class="text-xs text-gray-300 mt-1"></p>
+          </div>
+        </div>
+        <button onclick="closeAuthorModal()" class="text-gray-400 hover:text-white p-2 rounded-lg hover:bg-gray-800">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <!-- Author Modal Body (Series & Books) -->
+      <div class="p-6 overflow-y-auto space-y-6 flex-1">
+        <div class="flex items-center justify-between">
+          <h3 id="tAuthorBiblio" class="text-sm font-bold uppercase tracking-wider text-gray-300">Wszystkie cykle i książki tego autora</h3>
+          <span class="text-xs text-gray-500">Kliknij książkę, by zmienić stan posiadania lub sprawdzić wydania</span>
+        </div>
+        <div id="authorWorksContainer" class="space-y-6">
+          <!-- Injected via JS -->
+        </div>
+      </div>
+
+      <!-- Author Modal Footer -->
+      <div class="p-4 border-t border-gray-800 bg-gray-950/60 flex justify-end">
+        <button onclick="closeAuthorModal()" class="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg text-sm font-medium">
+          Zamknij / Close
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- MODAL: SZCZEGÓŁY DZIEŁA, WYBÓR OPRAWY, PORÓWNANIE CEN I WYDANIA -->
+  <div id="bookModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+    <div class="bg-gray-900 border border-gray-700 w-full max-w-3xl rounded-2xl overflow-hidden shadow-2xl flex flex-col max-h-[92vh]">
+      
+      <!-- Modal Header -->
+      <div class="p-5 sm:p-6 border-b border-gray-800 flex items-start justify-between bg-gray-950/70">
+        <div class="flex gap-4">
+          <img id="modalCover" src="" class="w-20 h-28 object-cover rounded-lg shadow-md border border-gray-700">
+          <div>
+            <span id="modalSeries" class="text-xs font-semibold px-2 py-0.5 rounded bg-brand-500/20 text-brand-400"></span>
+            <h2 id="modalTitle" class="text-xl sm:text-2xl font-serif font-bold text-white mt-1"></h2>
+            <p id="modalAuthorContainer" class="text-sm text-gray-400 font-medium">
+              Autor: <a href="javascript:void(0)" id="modalAuthorLink" class="text-brand-400 font-bold underline hover-author"></a>
+            </p>
+            <div class="flex flex-wrap items-center gap-2 mt-2">
+              <span id="modalStatusBadge" class="text-xs font-semibold px-2.5 py-1 rounded-full"></span>
+              <span id="modalFormatBadge" class="text-xs font-semibold px-2.5 py-1 rounded-full bg-gray-800 text-gray-300 border border-gray-700"></span>
+            </div>
+          </div>
+        </div>
+        <button onclick="closeModal()" class="text-gray-400 hover:text-white p-1 rounded-lg hover:bg-gray-800">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <!-- Modal Body (Format Selector, Price Comparison, Editions) -->
+      <div class="p-5 sm:p-6 overflow-y-auto space-y-6 flex-1">
+        
+        <!-- FORMAT SELECTOR (TWARDA CZY MIĘKKA) -->
+        <div class="p-4 rounded-xl bg-gray-950/60 border border-gray-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h4 class="text-xs font-bold uppercase tracking-wider text-gray-300 flex items-center gap-1.5">
+              <span>🎯 Preferowana oprawa / Format:</span>
+            </h4>
+            <p class="text-xs text-gray-400 mt-0.5">Wybierz format, aby przefiltrować ceny w księgarniach i wydania:</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="setModalFormatFilter('all')" id="modal-filter-all" class="px-3 py-1.5 text-xs font-bold rounded-lg bg-brand-600 text-white transition">
+              Wszystkie
+            </button>
+            <button onclick="setModalFormatFilter('hardcover')" id="modal-filter-hardcover" class="px-3 py-1.5 text-xs font-bold rounded-lg bg-gray-800 text-gray-300 hover:bg-gray-700 transition flex items-center gap-1">
+              <span>📖 Twarda</span>
+            </button>
+            <button onclick="setModalFormatFilter('paperback')" id="modal-filter-paperback" class="px-3 py-1.5 text-xs font-bold rounded-lg bg-gray-800 text-gray-300 hover:bg-gray-700 transition flex items-center gap-1">
+              <span>📕 Miękka</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- SECTION 1: PRICE COMPARISON (PORÓWNYWARKA CEN) -->
+        <div class="bg-gray-950/70 border border-amber-500/30 rounded-xl p-4 sm:p-5 space-y-3 shadow-lg">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1 border-b border-gray-800/80 pb-2.5">
+            <div class="flex items-center gap-2">
+              <span class="text-lg">🏷️</span>
+              <h4 id="tPriceCompTitle" class="text-sm font-bold text-amber-300 uppercase tracking-wider">
+                Porównanie Cen w Księgarniach Online
+              </h4>
+            </div>
+            <span id="priceFormatNotice" class="text-xs font-medium text-amber-400/80"></span>
+          </div>
+
+          <!-- Store Prices Clean List -->
+          <div id="pricesList" class="space-y-2.5 pt-1">
+            <!-- Injected via JS -->
+          </div>
+        </div>
+
+        <!-- SECTION 2: EDITIONS LIST -->
+        <div class="space-y-3">
+          <div class="flex items-center justify-between">
+            <h4 class="text-sm font-bold uppercase tracking-wider text-gray-300 flex items-center gap-2">
+              <span id="tEditionsTitle">📚 Dostępne polskie wydania</span>
+            </h4>
+            <span class="text-xs text-gray-400">(kliknij wydanie, które masz na półce)</span>
+          </div>
+          <p id="tEditionsDesc" class="text-xs text-gray-400">Różne wydawnictwa, oprawy, lata i okładki. Zaznacz dokładnie to, co posiadasz:</p>
+          
+          <div id="editionsList" class="space-y-2.5">
+            <!-- Editions injected via JS -->
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="p-4 border-t border-gray-800 bg-gray-950/80 flex flex-wrap gap-3 justify-between items-center">
+        <div class="flex items-center gap-2">
+          <button id="toggleOwnedBtn" onclick="toggleBookOwned()" class="px-4 py-2 rounded-lg text-sm font-semibold transition">
+            <!-- Toggle owned text -->
+          </button>
+        </div>
+        <button onclick="closeModal()" class="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg text-sm font-medium">
+          <span id="tCloseBtn">Zamknij</span>
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ADD BOOK MODAL -->
+  <div id="addModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+    <div class="bg-gray-900 border border-gray-700 w-full max-w-lg rounded-2xl p-6 space-y-4">
+      <div class="flex justify-between items-center">
+        <h3 id="tAddModalTitle" class="text-lg font-bold text-white">Dodaj nową książkę / serię</h3>
+        <button onclick="closeAddModal()" class="text-gray-400 hover:text-white">✕</button>
+      </div>
+      <p id="tAddModalDesc" class="text-xs text-gray-400">W pełnej wersji aplikacji dane pobierane są automatycznie z Biblioteki Narodowej, Open Library oraz porównywarek cen po wpisaniu tytułu lub zeskanowaniu kodu kreskowego ISBN telefonem.</p>
+      
+      <div class="space-y-3">
+        <div>
+          <label id="tLabelTitle" class="text-xs text-gray-400">Tytuł książki</label>
+          <input type="text" id="newBookTitle" placeholder="np. Narrenturm" class="w-full bg-gray-800 border border-gray-700 rounded p-2 text-sm text-white">
+        </div>
+        <div>
+          <label id="tLabelAuthor" class="text-xs text-gray-400">Autor</label>
+          <input type="text" id="newBookAuthor" placeholder="np. Andrzej Sapkowski" class="w-full bg-gray-800 border border-gray-700 rounded p-2 text-sm text-white">
+        </div>
+        <div>
+          <label id="tLabelSeries" class="text-xs text-gray-400">Cykl / Seria</label>
+          <input type="text" id="newBookSeries" placeholder="np. Trylogia Husycka (Tom 1)" class="w-full bg-gray-800 border border-gray-700 rounded p-2 text-sm text-white">
+        </div>
+        
+        <div>
+          <label class="text-xs text-gray-400">Typ oprawy</label>
+          <select id="newBookFormat" class="w-full bg-gray-800 border border-gray-700 rounded p-2 text-sm text-white">
+            <option value="hardcover">📖 Twarda oprawa (Hardcover)</option>
+            <option value="paperback">📕 Miękka oprawa (Paperback)</option>
+          </select>
+        </div>
+
+        <div>
+          <label id="tLabelIsbn" class="text-xs text-gray-400">Numer ISBN (opcjonalnie)</label>
+          <input type="text" id="newBookIsbn" placeholder="np. 9788375780000" class="w-full bg-gray-800 border border-gray-700 rounded p-2 text-sm text-white">
+        </div>
+      </div>
+      
+      <div class="flex justify-end gap-2 pt-2">
+        <button onclick="closeAddModal()" class="px-4 py-2 bg-gray-800 text-gray-300 rounded text-sm">Anuluj</button>
+        <button onclick="submitNewBook()" class="px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white font-semibold rounded text-sm">Dodaj do bazy</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // --- USER ACCOUNTS AND INDEPENDENT LIBRARIES ---
+    const userLibraries = {
+      "kamil": {
+        id: "kamil",
+        name: "Kamil",
+        email: "kamil@kolekcjoner.pl",
+        role: "Kolekcjoner Fantasy",
+        avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&q=80",
+        // Map of owned book IDs -> selected edition ID
+        ownedBooks: {
+          "w-01": "ed-w1-2",
+          "w-02": "ed-w2-2",
+          "w-03": "ed-w3-1",
+          "w-04": "ed-w4-1",
+          "w-06": "ed-w6-1",
+          "w-08": "ed-w8-1",
+          "hus-01": "ed-hus1",
+          "lotr-01": "ed-l1",
+          "lotr-02": "ed-l3",
+          "dune-01": "ed-d1",
+          "dune-02": "ed-d2",
+          "hp-01": "ed-hp1",
+          "hp-02": "ed-hp2",
+          "hp-03": "ed-hp3"
+        }
+      },
+      "anna": {
+        id: "anna",
+        name: "Anna",
+        email: "anna.czyta@gmail.com",
+        role: "Czytelniczka & Fanka HP",
+        avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&q=80",
+        ownedBooks: {
+          "hp-01": "ed-hp1",
+          "hp-02": "ed-hp2",
+          "hp-03": "ed-hp3",
+          "lotr-01": "ed-l1",
+          "lotr-02": "ed-l3",
+          "lotr-03": "ed-l4",
+          "w-01": "ed-w1-1",
+          "w-02": "ed-w2-1"
+        }
+      }
+    };
+
+    let currentUser = userLibraries["kamil"]; // default logged in as Kamil
+
+    // --- MULTILINGUAL DICTIONARY ---
+    let currentLang = 'pl'; // 'pl' or 'en'
+    let globalFormatFilter = 'all'; // 'all', 'hardcover', 'paperback'
+    let globalStatusFilter = 'all'; // 'all', 'owned', 'missing'
+    let modalFormatFilter = 'all';  // 'all', 'hardcover', 'paperback'
+
+    const i18n = {
+      pl: {
+        subheader: "Twoja prywatna biblioteczka i tracker wydań",
+        addBookBtn: "Dodaj książkę",
+        searchPlaceholder: "Szukaj tytułu, autora (np. Sapkowski), cyklu lub ISBN...",
+        statTotal: "Wszystkie tomy",
+        statOwned: "Posiadane przez Ciebie",
+        statMissing: "Braki do Twojego kompletu",
+        statAvg: "Ukończenie Twoich serii",
+        tabSeries: "Cykle i Serie",
+        tabMissing: "Braki w kolekcji",
+        tabAll: "Wszystkie tomy",
+        hintTip: "💡 Każdy zalogowany użytkownik ma własną półkę i niezależne wskaźniki ukończenia serii!",
+        missingRadarTitle: "Radar Braków do Ukończenia Sagi",
+        missingRadarDesc: "Tych tomów brakuje w Twojej biblioteczce. Wybierz oprawę i porównaj najlepsze oferty cenowe.",
+        authorBiblio: "Wszystkie cykle i książki tego autora",
+        priceCompTitle: "Porównanie Cen w Księgarniach Online",
+        editionsTitle: "📚 Dostępne polskie wydania",
+        editionsDesc: "Różne wydawnictwa, oprawy, lata i okładki. Zaznacz dokładnie to, co posiadasz:",
+        closeBtn: "Zamknij",
+        ownedBadge: "✓ Posiadasz w swojej biblioteczce",
+        missingBadge: "✗ Brakuje Ci tej książki do kompletu",
+        removeOwned: "Usuń z posiadanych (oznacz jako brak)",
+        markOwned: "+ Oznacz jako posiadaną",
+        quickAddOwned: "+ Mam już to!",
+        cheapest: "NAJTANIEJ",
+        shipping: "Wysyłka",
+        inStock: "Dostępne od ręki",
+        yourEdition: "✓ TWOJE WYDANIE",
+        selectThis: "Wybierz to wydanie",
+        completeSeries: "KOMPLETNA 100% 🏆",
+        missingCount: "Brakuje {n} tomów",
+        progress: "Postęp kolekcji:",
+        author: "Autor:",
+        buyInStore: "Kup w sklepie ↗",
+        hardcover: "Twarda oprawa",
+        paperback: "Miękka oprawa",
+        filterAll: "Wszystkie",
+        filterFormatLabel: "Oprawa:",
+        filterStatusLabel: "Status:",
+        loginBtn: "Zaloguj się",
+        logoutBtn: "Wyloguj"
+      },
+      en: {
+        subheader: "Your personal library & edition completion tracker",
+        addBookBtn: "Add Book",
+        searchPlaceholder: "Search by title, author (e.g. Sapkowski), series or ISBN...",
+        statTotal: "Total Volumes",
+        statOwned: "Owned in your library",
+        statMissing: "Missing to complete",
+        statAvg: "Your Series Completion",
+        tabSeries: "Sagas & Series",
+        tabMissing: "Missing Volumes",
+        tabAll: "All Volumes",
+        hintTip: "💡 Every authenticated user has their own private shelf and independent completion stats!",
+        missingRadarTitle: "Missing Volumes Radar",
+        missingRadarDesc: "These volumes are missing from your private shelf. Compare live prices across stores.",
+        authorBiblio: "All series and works by this author",
+        priceCompTitle: "Online Bookstore Price Comparison",
+        editionsTitle: "📚 Available prints & editions",
+        editionsDesc: "Different publishers, hardcover/paperback, years and covers. Mark your exact copy:",
+        closeBtn: "Close",
+        ownedBadge: "✓ In your personal library",
+        missingBadge: "✗ Missing from your collection",
+        removeOwned: "Remove from owned (mark as missing)",
+        markOwned: "+ Mark as owned",
+        quickAddOwned: "+ Own this!",
+        cheapest: "BEST DEAL",
+        shipping: "Shipping",
+        inStock: "In stock",
+        yourEdition: "✓ YOUR EDITION",
+        selectThis: "Select this edition",
+        completeSeries: "100% COMPLETE 🏆",
+        missingCount: "Missing {n} volumes",
+        progress: "Series progress:",
+        author: "Author:",
+        buyInStore: "Buy at store ↗",
+        hardcover: "Hardcover",
+        paperback: "Paperback",
+        filterAll: "All",
+        filterFormatLabel: "Format:",
+        filterStatusLabel: "Status:",
+        loginBtn: "Sign In",
+        logoutBtn: "Sign Out"
+      }
+    };
+
+    function toggleLanguage() {
+      currentLang = currentLang === 'pl' ? 'en' : 'pl';
+      document.getElementById('langFlag').innerText = currentLang === 'pl' ? '🇬🇧' : '🇵🇱';
+      document.getElementById('langLabel').innerText = currentLang === 'pl' ? 'English' : 'Polski';
+      applyTranslations();
+      renderAuthNav();
+      renderApp();
+    }
+
+    function applyTranslations() {
+      const t = i18n[currentLang];
+      document.getElementById('tSubheader').innerText = t.subheader;
+      document.getElementById('tAddBookBtn').innerText = t.addBookBtn;
+      document.getElementById('searchInput').placeholder = t.searchPlaceholder;
+      document.getElementById('tStatTotalLabel').innerText = t.statTotal;
+      document.getElementById('tStatOwnedLabel').innerText = t.statOwned;
+      document.getElementById('tStatMissingLabel').innerText = t.statMissing;
+      document.getElementById('tStatAvgLabel').innerText = t.statAvg;
+      document.getElementById('tTabSeries').innerText = t.tabSeries;
+      document.getElementById('tTabMissing').innerText = t.tabMissing;
+      document.getElementById('tTabAll').innerText = t.tabAll;
+      document.getElementById('tHintTip').innerHTML = t.hintTip;
+      document.getElementById('tMissingRadarTitle').innerText = t.missingRadarTitle;
+      document.getElementById('tMissingRadarDesc').innerText = t.missingRadarDesc;
+      document.getElementById('tAuthorBiblio').innerText = t.authorBiblio;
+      document.getElementById('tPriceCompTitle').innerText = t.priceCompTitle;
+      document.getElementById('tEditionsTitle').innerText = t.editionsTitle;
+      document.getElementById('tEditionsDesc').innerText = t.editionsDesc;
+      document.getElementById('tCloseBtn').innerText = t.closeBtn;
+      document.getElementById('tFilterFormatLabel').innerText = t.filterFormatLabel;
+      document.getElementById('tFilterStatusLabel').innerText = t.filterStatusLabel;
+    }
+
+    // --- AUTHENTICATION LOGIC & SWITCHER ---
+    function renderAuthNav() {
+      const widget = document.getElementById('authNavWidget');
+      const t = i18n[currentLang];
+
+      if (currentUser) {
+        widget.innerHTML = `
+          <div class="flex items-center gap-2">
+            <div class="flex items-center gap-1.5 cursor-pointer" onclick="openAuthModal()">
+              <img src="${currentUser.avatar}" class="w-8 h-8 rounded-full object-cover border border-brand-500 shadow">
+              <div class="hidden sm:block text-left leading-tight">
+                <p class="text-xs font-bold text-white truncate max-w-[90px]">${currentUser.name}</p>
+                <p class="text-[10px] text-brand-400 font-medium">Półka online</p>
+              </div>
+            </div>
+            <button onclick="logoutUser()" title="Wyloguj" class="p-1.5 rounded-lg text-gray-400 hover:text-rose-400 hover:bg-gray-800 transition">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
+            </button>
+          </div>
+        `;
+      } else {
+        widget.innerHTML = `
+          <button onclick="openAuthModal()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-brand-500/40 bg-brand-600/20 hover:bg-brand-600/30 text-xs font-semibold text-brand-300 transition shadow-sm">
+            <span>👤</span>
+            <span>${t.loginBtn}</span>
+          </button>
+        `;
+      }
+
+      // Update banner
+      const bannerName = document.getElementById('activeUserName');
+      const bannerBadge = document.getElementById('activeUserBadge');
+      const guestBanner = document.getElementById('guestAlertBanner');
+
+      if (currentUser) {
+        bannerName.innerText = currentUser.name;
+        bannerBadge.className = "text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-semibold border border-emerald-500/30";
+        bannerBadge.innerText = currentLang === 'pl' ? 'Prywatna półka' : 'Private shelf';
+        guestBanner.classList.add('hidden');
+      } else {
+        bannerName.innerText = currentLang === 'pl' ? 'Gość (Wylogowany)' : 'Guest (Logged out)';
+        bannerBadge.className = "text-[10px] px-1.5 py-0.5 rounded bg-gray-700 text-gray-300 font-semibold";
+        bannerBadge.innerText = currentLang === 'pl' ? 'Tylko odczyt' : 'Read-only';
+        guestBanner.classList.remove('hidden');
+      }
+
+      // Update Quick Switcher buttons active state
+      ['kamil', 'anna', 'guest'].forEach(u => {
+        const btn = document.getElementById(`userBtn-${u}`);
+        const isActive = (currentUser && currentUser.id === u) || (!currentUser && u === 'guest');
+        if (isActive) {
+          btn.className = "px-2 py-1 rounded text-xs font-semibold bg-brand-600 text-white transition";
+        } else {
+          btn.className = "px-2 py-1 rounded text-xs font-semibold bg-gray-800 text-gray-300 hover:bg-gray-700 transition";
+        }
+      });
+    }
+
+    function switchUserAccount(userId) {
+      if (userId === 'guest') {
+        currentUser = null;
+      } else {
+        currentUser = userLibraries[userId];
+      }
+      renderAuthNav();
+      renderApp();
+    }
+
+    function openAuthModal() {
+      document.getElementById('authModal').classList.remove('hidden');
+    }
+
+    function closeAuthModal() {
+      document.getElementById('authModal').classList.add('hidden');
+    }
+
+    function loginAsPreset(userId) {
+      currentUser = userLibraries[userId];
+      closeAuthModal();
+      renderAuthNav();
+      renderApp();
+    }
+
+    function submitCustomLogin() {
+      const name = document.getElementById('authName').value || "Użytkownik";
+      const email = document.getElementById('authEmail').value || "user@example.com";
+      
+      currentUser = {
+        id: "custom_" + Date.now(),
+        name: name,
+        email: email,
+        avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&q=80",
+        ownedBooks: {
+          "w-01": "ed-w1-2",
+          "lotr-01": "ed-l1"
+        }
+      };
+
+      closeAuthModal();
+      renderAuthNav();
+      renderApp();
+      alert(`Witaj ${name}! Zalogowano do Twojej osobistej biblioteczki.`);
+    }
+
+    function loginWithGoogle() {
+      currentUser = {
+        id: "google_user",
+        name: "Jan Kowalski (Google)",
+        email: "jan.kowalski@gmail.com",
+        avatar: "https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=100&q=80",
+        ownedBooks: {
+          "w-01": "ed-w1-2",
+          "w-02": "ed-w2-2",
+          "hp-01": "ed-hp1"
+        }
+      };
+      closeAuthModal();
+      renderAuthNav();
+      renderApp();
+    }
+
+    function logoutUser() {
+      currentUser = null;
+      renderAuthNav();
+      renderApp();
+    }
+
+    // Helper: is book owned by CURRENT user?
+    function isBookOwnedByCurrentUser(bookId) {
+      if (!currentUser || !currentUser.ownedBooks) return false;
+      return Boolean(currentUser.ownedBooks[bookId]);
+    }
+
+    function getSelectedEditionForCurrentUser(bookId) {
+      if (!currentUser || !currentUser.ownedBooks) return null;
+      return currentUser.ownedBooks[bookId] || null;
+    }
+
+    // --- AUTHORS DATABASE WITH FULL BIBLIOGRAPHY ---
+    const authorsDb = {
+      "Andrzej Sapkowski": {
+        name: "Andrzej Sapkowski",
+        avatar: "https://images.unsplash.com/photo-1544717305-2782549b5136?w=200&q=80",
+        bio: "Polski pisarz fantasy, twórca postaci Geralta z Rivii i kultowej Sagi o Wiedźminie oraz Trylogii Husyckiej.",
+        series: [
+          {
+            name: "Saga o Wiedźminie",
+            seriesId: "witcher",
+            bookIds: ["w-01", "w-02", "w-03", "w-04", "w-05", "w-06", "w-07", "w-08"]
+          },
+          {
+            name: "Trylogia Husycka",
+            seriesId: "hussite",
+            bookIds: ["hus-01", "hus-02", "hus-03"]
+          },
+          {
+            name: "Inne utwory i opowiadania",
+            seriesId: "sap-standalone",
+            bookIds: ["sap-zmija"]
+          }
+        ]
+      },
+      "J.R.R. Tolkien": {
+        name: "J.R.R. Tolkien",
+        avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&q=80",
+        bio: "Brytyjski filolog i pisarz, autor legendarnego Władcy Pierścieni, Hobbita oraz Silmarillionu.",
+        series: [
+          {
+            name: "Władca Pierścieni",
+            seriesId: "lotr",
+            bookIds: ["lotr-01", "lotr-02", "lotr-03"]
+          }
+        ]
+      },
+      "Frank Herbert": {
+        name: "Frank Herbert",
+        avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&q=80",
+        bio: "Amerykański pisarz science-fiction, twórca uniwersum Kronik Diuny.",
+        series: [
+          {
+            name: "Kroniki Diuny",
+            seriesId: "dune",
+            bookIds: ["dune-01", "dune-02", "dune-03", "dune-04"]
+          }
+        ]
+      },
+      "J.K. Rowling": {
+        name: "J.K. Rowling",
+        avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&q=80",
+        bio: "Brytyjska pisarka, autorka bestsellerowej serii powieści o młodym czarodzieju Harrym Potterze.",
+        series: [
+          {
+            name: "Harry Potter",
+            seriesId: "hp",
+            bookIds: ["hp-01", "hp-02", "hp-03"]
+          }
+        ]
+      }
+    };
+
+    // --- MAIN DATABASE (SERIES, BOOKS, EDITIONS & FORMAT-SPECIFIC PRICES) ---
+    const database = [
+      {
+        seriesId: "witcher",
+        seriesName: "Saga o Wiedźminie",
+        author: "Andrzej Sapkowski",
+        books: [
+          {
+            id: "w-01",
+            title: "Ostatnie życzenie",
+            volume: 1,
+            formatType: "hardcover",
+            cover: "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=300&q=80",
+            prices: [
+              { store: "TaniaKsiążka.pl", formatType: "paperback", format: "Miękka oprawa", price: "32,90 zł", shipping: "Wysyłka jutro", isBest: true, url: "https://www.taniaksiazka.pl/szukaj/ostatnie-zyczenie" },
+              { store: "Świat Książki", formatType: "paperback", format: "Miękka oprawa", price: "34,90 zł", shipping: "Wysyłka 24h", isBest: false, url: "https://www.swiatksiazki.pl/szukaj?q=ostatnie+zyczenie" },
+              { store: "Allegro", formatType: "paperback", format: "Miękka oprawa", price: "33,00 zł", shipping: "Smart 0 zł", isBest: false, url: "https://allegro.pl/listing?string=ostatnie%20zyczenie%20sapkowski" },
+              { store: "Empik", formatType: "hardcover", format: "Twarda oprawa", price: "44,99 zł", shipping: "Salon za 0 zł", isBest: false, url: "https://www.empik.com/szukaj/produkt?q=ostatnie%20zyczenie" },
+              { store: "Świat Książki", formatType: "hardcover", format: "Twarda oprawa", price: "41,50 zł", shipping: "Wysyłka 24h", isBest: true, url: "https://www.swiatksiazki.pl/szukaj?q=ostatnie+zyczenie" }
+            ],
+            editions: [
+              { id: "ed-w1-1", formatType: "paperback", publisher: "SuperNowa", year: 1993, format: "Oprawa miękka (Wydanie I)", isbn: "9788370540616", coverDesc: "Klasyczna grafika Bogusława Polcha" },
+              { id: "ed-w1-2", formatType: "hardcover", publisher: "SuperNowa", year: 2014, format: "Oprawa twarda z obwolutą", isbn: "9788375780635", coverDesc: "Czarne wydanie kolekcjonerskie z wilkiem" },
+              { id: "ed-w1-3", formatType: "paperback", publisher: "SuperNowa", year: 2020, format: "Oprawa miękka (Serialowa)", isbn: "9788375781793", coverDesc: "Okładka z serialu Netflix" }
+            ]
+          },
+          {
+            id: "w-02",
+            title: "Miecz przeznaczenia",
+            volume: 2,
+            formatType: "hardcover",
+            cover: "https://images.unsplash.com/photo-1512820790803-83ca734da794?w=300&q=80",
+            prices: [
+              { store: "TaniaKsiążka.pl", formatType: "paperback", format: "Miękka oprawa", price: "33,80 zł", shipping: "Wysyłka 24h", isBest: true, url: "https://www.taniaksiazka.pl/szukaj/miecz-przeznaczenia" },
+              { store: "Świat Książki", formatType: "hardcover", format: "Twarda oprawa", price: "42,00 zł", shipping: "Dostępne", isBest: true, url: "https://www.swiatksiazki.pl/szukaj?q=miecz+przeznaczenia" },
+              { store: "Empik", formatType: "hardcover", format: "Twarda oprawa", price: "45,50 zł", shipping: "Odbiór w salonie", isBest: false, url: "https://www.empik.com/szukaj/produkt?q=miecz%20przeznaczenia" }
+            ],
+            editions: [
+              { id: "ed-w2-1", formatType: "paperback", publisher: "SuperNowa", year: 1993, format: "Oprawa miękka", isbn: "9788370540623", coverDesc: "Wydanie I" },
+              { id: "ed-w2-2", formatType: "hardcover", publisher: "SuperNowa", year: 2014, format: "Oprawa twarda", isbn: "9788375780642", coverDesc: "Czarne wydanie z mieczem" }
+            ]
+          },
+          {
+            id: "w-03",
+            title: "Krew elfów",
+            volume: 3,
+            formatType: "hardcover",
+            cover: "https://images.unsplash.com/photo-1495640388908-05fa85288e61?w=300&q=80",
+            prices: [
+              { store: "Świat Książki", formatType: "hardcover", format: "Twarda oprawa", price: "42,50 zł", shipping: "Wysyłka 24h", isBest: true, url: "https://www.swiatksiazki.pl/szukaj?q=krew+elfow" },
+              { store: "TaniaKsiążka.pl", formatType: "paperback", format: "Miękka oprawa", price: "34,20 zł", shipping: "Wysyłka jutro", isBest: true, url: "https://www.taniaksiazka.pl" }
+            ],
+            editions: [
+              { id: "ed-w3-1", formatType: "hardcover", publisher: "SuperNowa", year: 2014, format: "Oprawa twarda", isbn: "9788375780659", coverDesc: "Wydanie twarda oprawa" },
+              { id: "ed-w3-2", formatType: "paperback", publisher: "SuperNowa", year: 2014, format: "Oprawa miękka", isbn: "9788375780758", coverDesc: "Wydanie kieszonkowe" }
+            ]
+          },
+          {
+            id: "w-04",
+            title: "Czas pogardy",
+            volume: 4,
+            formatType: "hardcover",
+            cover: "https://images.unsplash.com/photo-1497633762265-9d179a990aa6?w=300&q=80",
+            prices: [
+              { store: "TaniaKsiążka.pl", formatType: "paperback", format: "Miękka oprawa", price: "34,90 zł", shipping: "Wysyłka jutro", isBest: true, url: "https://www.taniaksiazka.pl" },
+              { store: "Świat Książki", formatType: "hardcover", format: "Twarda oprawa", price: "43,00 zł", shipping: "Dostępne", isBest: true, url: "https://www.swiatksiazki.pl" }
+            ],
+            editions: [
+              { id: "ed-w4-1", formatType: "hardcover", publisher: "SuperNowa", year: 2014, format: "Oprawa twarda", isbn: "9788375780666", coverDesc: "Wydanie twarda oprawa" }
+            ]
+          },
+          {
+            id: "w-05",
+            title: "Chrzest ognia",
+            volume: 5,
+            formatType: "hardcover",
+            cover: "https://images.unsplash.com/photo-1476275466078-4007374efbbe?w=300&q=80",
+            prices: [
+              { store: "TaniaKsiążka.pl", formatType: "paperback", format: "Miękka oprawa", price: "32,90 zł", shipping: "Wysyłka jutro", isBest: true, url: "https://www.taniaksiazka.pl/szukaj/chrzest-ognia-sapkowski" },
+              { store: "Świat Książki", formatType: "hardcover", format: "Twarda oprawa", price: "41,90 zł", shipping: "Wysyłka 24h", isBest: true, url: "https://www.swiatksiazki.pl/szukaj?q=chrzest+ognia" }
+            ],
+            editions: [
+              { id: "ed-w5-1", formatType: "paperback", publisher: "SuperNowa", year: 1996, format: "Oprawa miękka", isbn: "9788370541163", coverDesc: "Wydanie klasyczne miękkie" },
+              { id: "ed-w5-2", formatType: "hardcover", publisher: "SuperNowa", year: 2014, format: "Oprawa twarda", isbn: "9788375780673", coverDesc: "Wydanie czarne, twarda oprawa" }
+            ]
+          },
+          {
+            id: "w-06",
+            title: "Wieża Jaskółki",
+            volume: 6,
+            formatType: "hardcover",
+            cover: "https://images.unsplash.com/photo-1543002588-bfa74002ed7e?w=300&q=80",
+            prices: [{ store: "Świat Książki", formatType: "hardcover", format: "Twarda oprawa", price: "42,90 zł", shipping: "Dostępne", isBest: true, url: "https://www.swiatksiazki.pl" }],
+            editions: [{ id: "ed-w6-1", formatType: "hardcover", publisher: "SuperNowa", year: 2014, format: "Oprawa twarda", isbn: "9788375780680", coverDesc: "Wydanie czarne, twarda oprawa" }]
+          },
+          {
+            id: "w-07",
+            title: "Pani Jeziora",
+            volume: 7,
+            formatType: "hardcover",
+            cover: "https://images.unsplash.com/photo-1516979187457-637abb4f9353?w=300&q=80",
+            prices: [
+              { store: "Świat Książki", formatType: "hardcover", format: "Twarda oprawa", price: "44,90 zł", shipping: "Dostępne", isBest: true, url: "https://www.swiatksiazki.pl/szukaj?q=pani+jeziora+sapkowski" }
+            ],
+            editions: [{ id: "ed-w7-1", formatType: "hardcover", publisher: "SuperNowa", year: 2014, format: "Oprawa twarda", isbn: "9788375780697", coverDesc: "Wydanie twarda oprawa" }]
+          },
+          {
+            id: "w-08",
+            title: "Sezon burz",
+            volume: 8,
+            formatType: "hardcover",
+            cover: "https://images.unsplash.com/photo-1491841550275-ad7854e35ca6?w=300&q=80",
+            prices: [{ store: "Świat Książki", formatType: "hardcover", format: "Twarda oprawa", price: "42,00 zł", shipping: "Dostępne", isBest: true, url: "https://www.swiatksiazki.pl" }],
+            editions: [{ id: "ed-w8-1", formatType: "hardcover", publisher: "SuperNowa", year: 2013, format: "Oprawa twarda", isbn: "9788375780598", coverDesc: "Wydanie pierwsze twarde" }]
+          }
+        ]
+      },
+      {
+        seriesId: "hussite",
+        seriesName: "Trylogia Husycka",
+        author: "Andrzej Sapkowski",
+        books: [
+          {
+            id: "hus-01",
+            title: "Narrenturm",
+            volume: 1,
+            formatType: "hardcover",
+            cover: "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=300&q=80",
+            prices: [
+              { store: "Świat Książki", formatType: "hardcover", format: "Twarda oprawa", price: "42,00 zł", shipping: "Wysyłka 24h", isBest: true, url: "https://www.swiatksiazki.pl/szukaj?q=narrenturm" }
+            ],
+            editions: [
+              { id: "ed-hus1", formatType: "hardcover", publisher: "SuperNowa", year: 2002, format: "Oprawa twarda", isbn: "9788370541538", coverDesc: "Wydanie I w oprawie twardej" }
+            ]
+          },
+          {
+            id: "hus-02",
+            title: "Boży bojownicy",
+            volume: 2,
+            formatType: "hardcover",
+            cover: "https://images.unsplash.com/photo-1512820790803-83ca734da794?w=300&q=80",
+            prices: [
+              { store: "Świat Książki", formatType: "hardcover", format: "Twarda oprawa", price: "43,50 zł", shipping: "Dostępne", isBest: true, url: "https://www.swiatksiazki.pl" }
+            ],
+            editions: [
+              { id: "ed-hus2", formatType: "hardcover", publisher: "SuperNowa", year: 2004, format: "Oprawa twarda", isbn: "9788370541620", coverDesc: "Wydanie I twarde" }
+            ]
+          },
+          {
+            id: "hus-03",
+            title: "Lux perpetua",
+            volume: 3,
+            formatType: "hardcover",
+            cover: "https://images.unsplash.com/photo-1495640388908-05fa85288e61?w=300&q=80",
+            prices: [
+              { store: "Świat Książki", formatType: "hardcover", format: "Twarda oprawa", price: "44,00 zł", shipping: "Dostępne", isBest: true, url: "https://www.swiatksiazki.pl" }
+            ],
+            editions: [
+              { id: "ed-hus3", formatType: "hardcover", publisher: "SuperNowa", year: 2006, format: "Oprawa twarda", isbn: "9788370541798", coverDesc: "Wydanie I twarde" }
+            ]
+          }
+        ]
+      },
+      {
+        seriesId: "lotr",
+        seriesName: "Władca Pierścieni",
+        author: "J.R.R. Tolkien",
+        books: [
+          {
+            id: "lotr-01",
+            title: "Drużyna Pierścienia",
+            volume: 1,
+            formatType: "hardcover",
+            cover: "https://images.unsplash.com/photo-1463320726281-696a485928c7?w=300&q=80",
+            prices: [
+              { store: "Świat Książki", formatType: "hardcover", format: "Twarda oprawa (Ilustr.)", price: "54,90 zł", shipping: "Wysyłka 24h", isBest: true, url: "https://www.swiatksiazki.pl" }
+            ],
+            editions: [
+              { id: "ed-l1", formatType: "hardcover", publisher: "Zysk i S-ka", year: 2021, format: "Oprawa twarda z ilustracjami Alana Lee", isbn: "9788382023565", coverDesc: "Wydanie ilustrowane" },
+              { id: "ed-l2", formatType: "paperback", publisher: "Muza", year: 2012, format: "Oprawa miękka", isbn: "9788377582558", coverDesc: "Tłumaczenie Skibniewska" }
+            ]
+          },
+          {
+            id: "lotr-02",
+            title: "Dwie wieże",
+            volume: 2,
+            formatType: "hardcover",
+            cover: "https://images.unsplash.com/photo-1457369804613-52c61a468e7d?w=300&q=80",
+            prices: [
+              { store: "Świat Książki", formatType: "hardcover", format: "Twarda oprawa", price: "54,90 zł", shipping: "Dostępne", isBest: true, url: "https://www.swiatksiazki.pl" }
+            ],
+            editions: [
+              { id: "ed-l3", formatType: "hardcover", publisher: "Zysk i S-ka", year: 2021, format: "Oprawa twarda z ilustracjami Alana Lee", isbn: "9788382023572", coverDesc: "Wydanie ilustrowane" }
+            ]
+          },
+          {
+            id: "lotr-03",
+            title: "Powrót króla",
+            volume: 3,
+            formatType: "hardcover",
+            cover: "https://images.unsplash.com/photo-1532012164546-f432f2e3777f?w=300&q=80",
+            prices: [
+              { store: "TaniaKsiążka.pl", formatType: "paperback", format: "Miękka oprawa", price: "41,00 zł", shipping: "Wysyłka jutro", isBest: true, url: "https://www.taniaksiazka.pl" },
+              { store: "Świat Książki", formatType: "hardcover", format: "Twarda oprawa (Ilustr.)", price: "54,90 zł", shipping: "Wysyłka 24h", isBest: true, url: "https://www.swiatksiazki.pl" }
+            ],
+            editions: [
+              { id: "ed-l4", formatType: "hardcover", publisher: "Zysk i S-ka", year: 2021, format: "Oprawa twarda z ilustracjami Alana Lee", isbn: "9788382023589", coverDesc: "Wydanie ilustrowane do kompletu" }
+            ]
+          }
+        ]
+      },
+      {
+        seriesId: "dune",
+        seriesName: "Kroniki Diuny",
+        author: "Frank Herbert",
+        books: [
+          {
+            id: "dune-01",
+            title: "Diuna",
+            volume: 1,
+            formatType: "hardcover",
+            cover: "https://images.unsplash.com/photo-1506466010722-395aa2bef877?w=300&q=80",
+            prices: [{ store: "Świat Książki", formatType: "hardcover", format: "Twarda oprawa", price: "48,90 zł", shipping: "Dostępne", isBest: true, url: "https://www.swiatksiazki.pl" }],
+            editions: [{ id: "ed-d1", formatType: "hardcover", publisher: "Rebis", year: 2021, format: "Oprawa twarda z grafikami Siudmaka", isbn: "9788381881791", coverDesc: "Ilustracje Wojciech Siudmak" }]
+          },
+          {
+            id: "dune-02",
+            title: "Mesjasz Diuny",
+            volume: 2,
+            formatType: "hardcover",
+            cover: "https://images.unsplash.com/photo-1518770660439-4636190af475?w=300&q=80",
+            prices: [{ store: "Świat Książki", formatType: "hardcover", format: "Twarda oprawa", price: "44,00 zł", shipping: "Dostępne", isBest: true, url: "https://www.swiatksiazki.pl" }],
+            editions: [{ id: "ed-d2", formatType: "hardcover", publisher: "Rebis", year: 2021, format: "Oprawa twarda z grafikami Siudmaka", isbn: "9788381882002", coverDesc: "Ilustracje Siudmak" }]
+          },
+          {
+            id: "dune-03",
+            title: "Dzieci Diuny",
+            volume: 3,
+            formatType: "hardcover",
+            cover: "https://images.unsplash.com/photo-1471970471555-bf5d1b32822b?w=300&q=80",
+            prices: [{ store: "TaniaKsiążka.pl", formatType: "hardcover", format: "Twarda oprawa", price: "41,90 zł", shipping: "Wysyłka jutro", isBest: true, url: "https://www.taniaksiazka.pl" }],
+            editions: [{ id: "ed-d3", formatType: "hardcover", publisher: "Rebis", year: 2021, format: "Oprawa twarda z grafikami Siudmaka", isbn: "9788381882200", coverDesc: "Ilustracje Siudmak" }]
+          },
+          {
+            id: "dune-04",
+            title: "Bóg Imperator Diuny",
+            volume: 4,
+            formatType: "hardcover",
+            cover: "https://images.unsplash.com/photo-1497633762265-9d179a990aa6?w=300&q=80",
+            prices: [{ store: "Świat Książki", formatType: "hardcover", format: "Twarda oprawa", price: "45,50 zł", shipping: "Dostępne", isBest: true, url: "https://www.swiatksiazki.pl" }],
+            editions: [{ id: "ed-d4", formatType: "hardcover", publisher: "Rebis", year: 2022, format: "Oprawa twarda z grafikami Siudmaka", isbn: "9788381882507", coverDesc: "Ilustracje Siudmak" }]
+          }
+        ]
+      },
+      {
+        seriesId: "hp",
+        seriesName: "Harry Potter",
+        author: "J.K. Rowling",
+        books: [
+          {
+            id: "hp-01",
+            title: "Kamień Filozoficzny",
+            volume: 1,
+            formatType: "hardcover",
+            cover: "https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=300&q=80",
+            prices: [{ store: "Świat Książki", formatType: "hardcover", format: "Twarda oprawa", price: "39,90 zł", shipping: "Dostępne", isBest: true, url: "https://www.swiatksiazki.pl" }],
+            editions: [{ id: "ed-hp1", formatType: "hardcover", publisher: "Media Rodzina", year: 2000, format: "Oprawa twarda", isbn: "9788372780126", coverDesc: "Klasyczna okładka Mary GrandPré" }]
+          },
+          {
+            id: "hp-02",
+            title: "Komnata Tajemnic",
+            volume: 2,
+            formatType: "hardcover",
+            cover: "https://images.unsplash.com/photo-1512820790803-83ca734da794?w=300&q=80",
+            prices: [{ store: "Empik", formatType: "hardcover", format: "Twarda oprawa", price: "41,90 zł", shipping: "Dostępne", isBest: true, url: "https://www.empik.com" }],
+            editions: [{ id: "ed-hp2", formatType: "hardcover", publisher: "Media Rodzina", year: 2000, format: "Oprawa twarda", isbn: "9788372780133", coverDesc: "Wydanie I twarde" }]
+          },
+          {
+            id: "hp-03",
+            title: "Więzień Azkabanu",
+            volume: 3,
+            formatType: "hardcover",
+            cover: "https://images.unsplash.com/photo-1463320726281-696a485928c7?w=300&q=80",
+            prices: [{ store: "TaniaKsiążka.pl", formatType: "hardcover", format: "Twarda oprawa", price: "38,90 zł", shipping: "Wysyłka jutro", isBest: true, url: "https://www.taniaksiazka.pl" }],
+            editions: [{ id: "ed-hp3", formatType: "hardcover", publisher: "Media Rodzina", year: 2001, format: "Oprawa twarda", isbn: "9788372780140", coverDesc: "Wydanie I twarde" }]
+          }
+        ]
+      }
+    ];
+
+    let currentBook = null;
+    let currentSeries = null;
+    let currentAuthorName = null;
+
+    // --- GLOBAL FORMAT & STATUS FILTERS ---
+    function setGlobalFormatFilter(fmt) {
+      globalFormatFilter = fmt;
+      ['all', 'hardcover', 'paperback'].forEach(f => {
+        const btn = document.getElementById(`filter-format-${f}`);
+        if (f === fmt) {
+          btn.className = "px-3 py-1 text-xs font-semibold rounded-lg bg-brand-600 text-white transition";
+        } else {
+          btn.className = "px-3 py-1 text-xs font-semibold rounded-lg bg-gray-800 text-gray-300 hover:bg-gray-700 transition";
+        }
+      });
+      renderApp();
+    }
+
+    function setGlobalStatusFilter(st) {
+      globalStatusFilter = st;
+      ['all', 'owned', 'missing'].forEach(s => {
+        const btn = document.getElementById(`filter-status-${s}`);
+        if (s === st) {
+          btn.className = "px-3 py-1 text-xs font-semibold rounded-lg bg-brand-600 text-white transition";
+        } else {
+          btn.className = "px-3 py-1 text-xs font-semibold rounded-lg bg-gray-800 text-gray-300 hover:bg-gray-700 transition";
+        }
+      });
+      renderApp();
+    }
+
+    // Modal format filter
+    function setModalFormatFilter(fmt) {
+      modalFormatFilter = fmt;
+      ['all', 'hardcover', 'paperback'].forEach(f => {
+        const btn = document.getElementById(`modal-filter-${f}`);
+        if (f === fmt) {
+          btn.className = "px-3 py-1.5 text-xs font-bold rounded-lg bg-brand-600 text-white transition";
+        } else {
+          btn.className = "px-3 py-1.5 text-xs font-bold rounded-lg bg-gray-800 text-gray-300 hover:bg-gray-700 transition";
+        }
+      });
+      renderPriceComparison();
+      renderEditions();
+    }
+
+    // --- FILTER HELPER (PER USER) ---
+    function passesFilters(book) {
+      const owned = isBookOwnedByCurrentUser(book.id);
+
+      // Format filter
+      if (globalFormatFilter !== 'all') {
+        const bookFmt = book.formatType || 'hardcover';
+        const hasMatchingEdition = book.editions && book.editions.some(e => e.formatType === globalFormatFilter);
+        if (bookFmt !== globalFormatFilter && !hasMatchingEdition) return false;
+      }
+      // Status filter
+      if (globalStatusFilter === 'owned' && !owned) return false;
+      if (globalStatusFilter === 'missing' && owned) return false;
+      return true;
+    }
+
+    // --- APP RENDER ---
+    function renderApp() {
+      renderSeries();
+      renderMissing();
+      renderAllBooks();
+      updateStats();
+    }
+
+    function updateStats() {
+      let total = 0;
+      let owned = 0;
+      database.forEach(s => {
+        s.books.forEach(b => {
+          total++;
+          if (isBookOwnedByCurrentUser(b.id)) owned++;
+        });
+      });
+      const missing = total - owned;
+      const avg = total > 0 ? Math.round((owned / total) * 100) : 0;
+
+      document.getElementById('statTotalBooks').innerText = total;
+      document.getElementById('statOwned').innerText = owned;
+      document.getElementById('statMissing').innerText = missing;
+      document.getElementById('missingCountBadge').innerText = missing;
+      document.getElementById('statAvg').innerText = `${avg}%`;
+    }
+
+    // Render Series with progress bar
+    function renderSeries() {
+      const t = i18n[currentLang];
+      const container = document.getElementById('seriesContainer');
+      container.innerHTML = '';
+
+      database.forEach(series => {
+        const total = series.books.length;
+        const owned = series.books.filter(b => isBookOwnedByCurrentUser(b.id)).length;
+        const percentage = Math.round((owned / total) * 100);
+        const isComplete = owned === total;
+
+        const filteredBooks = series.books.filter(passesFilters);
+        if (filteredBooks.length === 0 && (globalFormatFilter !== 'all' || globalStatusFilter !== 'all')) {
+          return;
+        }
+
+        const card = document.createElement('div');
+        card.className = 'card-glass rounded-2xl p-6 transition hover:border-gray-600';
+
+        let booksHtml = filteredBooks.map(b => {
+          const isOwned = isBookOwnedByCurrentUser(b.id);
+          const isHardcover = b.formatType === 'hardcover';
+          return `
+            <div onclick="openBookModal('${series.seriesId}', '${b.id}')" 
+                 class="group relative flex flex-col items-center text-center cursor-pointer transition transform hover:-translate-y-1">
+              <div class="relative w-full aspect-[2/3] rounded-lg overflow-hidden border ${isOwned ? 'border-emerald-500/50 shadow-md shadow-emerald-950/30' : 'border-dashed border-gray-700 opacity-60 hover:opacity-100'}">
+                <img src="${b.cover}" class="w-full h-full object-cover">
+                
+                <div class="absolute top-1.5 right-1.5 flex flex-col gap-1 items-end">
+                  ${isOwned 
+                    ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold badge-owned">${currentLang === 'pl' ? '✓ MAM' : '✓ OWNED'}</span>` 
+                    : `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold badge-missing">${currentLang === 'pl' ? 'BRAK' : 'MISSING'}</span>`}
+                  
+                  <span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-black/80 text-amber-300 border border-amber-500/30">
+                    ${isHardcover ? '📖 TWARDA' : '📕 MIĘKKA'}
+                  </span>
+                </div>
+
+                <div class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent p-2 text-left">
+                  <span class="text-[10px] font-bold text-gray-300">Tom ${b.volume}</span>
+                </div>
+              </div>
+              <p class="text-xs font-medium text-gray-200 mt-2 line-clamp-1 group-hover:text-brand-400">${b.title}</p>
+            </div>
+          `;
+        }).join('');
+
+        card.innerHTML = `
+          <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-gray-800 pb-4 mb-4">
+            <div>
+              <div class="flex items-center gap-2">
+                <h3 class="text-xl font-serif font-bold text-white">${series.seriesName}</h3>
+                ${isComplete 
+                  ? `<span class="px-2 py-0.5 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">${t.completeSeries}</span>` 
+                  : `<span class="px-2 py-0.5 rounded-full text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">${t.missingCount.replace('{n}', total - owned)}</span>`}
+              </div>
+              <p class="text-xs text-gray-400 mt-1">
+                ${t.author} 
+                <a href="javascript:void(0)" onclick="openAuthorModal('${series.author}')" class="text-brand-400 font-bold hover-author underline cursor-pointer">
+                  ${series.author} ↗
+                </a>
+              </p>
+            </div>
+
+            <div class="flex items-center gap-4 min-w-[200px]">
+              <div class="w-full">
+                <div class="flex justify-between text-xs font-semibold mb-1">
+                  <span class="text-gray-400">${t.progress}</span>
+                  <span class="${isComplete ? 'text-emerald-400' : 'text-amber-400'}">${owned} / ${total} (${percentage}%)</span>
+                </div>
+                <div class="w-full bg-gray-800 rounded-full h-2 overflow-hidden">
+                  <div class="h-full rounded-full transition-all duration-500 ${isComplete ? 'bg-emerald-500' : 'bg-gradient-to-r from-amber-500 to-brand-500'}" style="width: ${percentage}%"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3">
+            ${booksHtml}
+          </div>
+        `;
+
+        container.appendChild(card);
+      });
+    }
+
+    // Render Missing Books
+    function renderMissing() {
+      const t = i18n[currentLang];
+      const container = document.getElementById('missingList');
+      container.innerHTML = '';
+
+      database.forEach(s => {
+        s.books.filter(b => !isBookOwnedByCurrentUser(b.id) && passesFilters(b)).forEach(b => {
+          const item = document.createElement('div');
+          item.className = 'card-glass rounded-xl p-4 flex gap-4 items-center border border-rose-900/30 hover:border-rose-700/60 transition';
+          
+          const lowestPrice = b.prices && b.prices.length > 0 
+            ? b.prices.reduce((min, p) => p.isBest ? p : min, b.prices[0]) 
+            : null;
+
+          item.innerHTML = `
+            <img src="${b.cover}" class="w-16 h-22 object-cover rounded shadow border border-gray-700">
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-1.5">
+                <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-brand-500/20 text-brand-400">${s.seriesName} (Tom ${b.volume})</span>
+                <span class="text-[9px] font-bold px-1.5 py-0.2 rounded bg-gray-800 text-amber-300 border border-gray-700">
+                  ${b.formatType === 'hardcover' ? '📖 Twarda' : '📕 Miękka'}
+                </span>
+              </div>
+              <h4 class="font-serif font-bold text-white text-base truncate mt-1">${b.title}</h4>
+              <p class="text-xs text-gray-400">
+                <a href="javascript:void(0)" onclick="openAuthorModal('${s.author}')" class="text-gray-300 hover-author underline">
+                  ${s.author}
+                </a>
+              </p>
+              
+              ${lowestPrice ? `
+                <div class="flex items-center gap-1.5 mt-2">
+                  <span class="text-xs font-bold text-emerald-400 font-mono">${lowestPrice.price}</span>
+                  <span class="text-[10px] text-gray-400">w ${lowestPrice.store} (${lowestPrice.format})</span>
+                </div>
+              ` : ''}
+
+              <div class="flex items-center gap-2 mt-2.5">
+                <button onclick="quickMarkOwned('${s.seriesId}', '${b.id}')" class="px-2.5 py-1 bg-emerald-600/30 hover:bg-emerald-600/50 text-emerald-300 rounded text-xs font-semibold border border-emerald-500/40">
+                  ${t.quickAddOwned}
+                </button>
+                <button onclick="openBookModal('${s.seriesId}', '${b.id}')" class="px-2.5 py-1 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 rounded text-xs font-medium border border-amber-500/30">
+                  Wydania i ceny ↗
+                </button>
+              </div>
+            </div>
+          `;
+          container.appendChild(item);
+        });
+      });
+    }
+
+    // Render All Books Grid
+    function renderAllBooks() {
+      const container = document.getElementById('allBooksGrid');
+      container.innerHTML = '';
+
+      database.forEach(s => {
+        s.books.filter(passesFilters).forEach(b => {
+          const isOwned = isBookOwnedByCurrentUser(b.id);
+          const card = document.createElement('div');
+          card.className = 'card-glass rounded-xl p-3 cursor-pointer hover:border-brand-500 transition flex flex-col justify-between';
+          card.onclick = () => openBookModal(s.seriesId, b.id);
+          card.innerHTML = `
+            <div>
+              <div class="relative aspect-[2/3] rounded-lg overflow-hidden mb-2">
+                <img src="${b.cover}" class="w-full h-full object-cover">
+                <div class="absolute top-1 right-1 flex flex-col items-end gap-0.5">
+                  <span class="text-[9px] font-bold px-1 rounded ${isOwned ? 'badge-owned' : 'badge-missing'}">
+                    ${isOwned ? (currentLang === 'pl' ? 'POSIADASZ' : 'OWNED') : (currentLang === 'pl' ? 'BRAK' : 'MISSING')}
+                  </span>
+                  <span class="text-[8px] font-bold px-1 rounded bg-black/80 text-amber-300">
+                    ${b.formatType === 'hardcover' ? 'TWARDA' : 'MIĘKKA'}
+                  </span>
+                </div>
+              </div>
+              <h4 class="text-xs font-bold text-white line-clamp-1">${b.title}</h4>
+              <p class="text-[11px] text-gray-400 truncate">${s.seriesName}</p>
+            </div>
+            <p class="text-[10px] text-gray-500 mt-2">${s.author}</p>
+          `;
+          container.appendChild(card);
+        });
+      });
+    }
+
+    // Quick mark owned
+    function quickMarkOwned(seriesId, bookId) {
+      if (!currentUser) {
+        openAuthModal();
+        return;
+      }
+      const s = database.find(x => x.seriesId === seriesId);
+      const b = s.books.find(x => x.id === bookId);
+      const defaultEd = (b.editions && b.editions.length > 0) ? b.editions[0].id : "custom_ed";
+      currentUser.ownedBooks[b.id] = defaultEd;
+      renderApp();
+    }
+
+    // --- AUTHOR PROFILE MODAL ---
+    function openAuthorModal(authorName) {
+      currentAuthorName = authorName;
+      const author = authorsDb[authorName] || {
+        name: authorName,
+        avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&q=80",
+        bio: currentLang === 'pl' ? "Autor dzieł literackich." : "Author of literary works.",
+        series: []
+      };
+
+      document.getElementById('authorName').innerText = author.name;
+      document.getElementById('authorAvatar').src = author.avatar;
+
+      // Calculate total and owned books for this author by CURRENT USER
+      let totalAuthorBooks = 0;
+      let ownedAuthorBooks = 0;
+      database.filter(s => s.author === authorName).forEach(s => {
+        s.books.forEach(b => {
+          totalAuthorBooks++;
+          if (isBookOwnedByCurrentUser(b.id)) ownedAuthorBooks++;
+        });
+      });
+
+      const percentage = totalAuthorBooks > 0 ? Math.round((ownedAuthorBooks / totalAuthorBooks) * 100) : 0;
+      const userName = currentUser ? currentUser.name : (currentLang === 'pl' ? 'Gość' : 'Guest');
+      const statusText = currentLang === 'pl'
+        ? `${userName} posiada ${ownedAuthorBooks} z ${totalAuthorBooks} książek tego autora (${percentage}% całej twórczości w bibliotece)`
+        : `${userName} owns ${ownedAuthorBooks} of ${totalAuthorBooks} books by this author (${percentage}% of their bibliography)`;
+
+      document.getElementById('authorOwnershipRatio').innerText = statusText;
+
+      // Render author series and works
+      const container = document.getElementById('authorWorksContainer');
+      container.innerHTML = '';
+
+      const authorSeriesList = database.filter(s => s.author === authorName);
+      if (authorSeriesList.length === 0) {
+        container.innerHTML = `<p class="text-xs text-gray-500">${currentLang === 'pl' ? 'Brak powiązanych książek w bazie.' : 'No linked books in catalog.'}</p>`;
+      } else {
+        authorSeriesList.forEach(series => {
+          const seriesBox = document.createElement('div');
+          seriesBox.className = 'bg-gray-950/70 border border-gray-800 rounded-xl p-4 space-y-3';
+          
+          let booksListHtml = series.books.map(b => {
+            const isOwned = isBookOwnedByCurrentUser(b.id);
+            return `
+              <div class="flex items-center justify-between p-2.5 rounded-lg ${isOwned ? 'bg-emerald-950/20 border border-emerald-500/30' : 'bg-gray-800/40 border border-gray-700/40'}">
+                <div class="flex items-center gap-3">
+                  <img src="${b.cover}" class="w-9 h-13 object-cover rounded shadow">
+                  <div>
+                    <div class="flex items-center gap-2">
+                      <p class="text-sm font-bold text-white">${b.title} <span class="text-xs text-gray-400 font-normal">(Tom ${b.volume})</span></p>
+                      <span class="text-[9px] px-1.5 py-0.2 rounded bg-gray-800 text-amber-300 font-semibold border border-gray-700">
+                        ${b.formatType === 'hardcover' ? 'Twarda' : 'Miękka'}
+                      </span>
+                    </div>
+                    <p class="text-[11px] ${isOwned ? 'text-emerald-400 font-medium' : 'text-rose-400 font-medium'}">
+                      ${isOwned ? (currentLang === 'pl' ? '✓ Posiadasz w biblioteczce' : '✓ Owned on shelf') : (currentLang === 'pl' ? '✗ Brakuje Ci tej książki' : '✗ Missing from collection')}
+                    </p>
+                  </div>
+                </div>
+                <div class="flex items-center gap-2">
+                  <button onclick="toggleAuthorBookOwned('${series.seriesId}', '${b.id}')" class="px-2.5 py-1 text-xs font-semibold rounded ${isOwned ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-emerald-600 hover:bg-emerald-500 text-white'}">
+                    ${isOwned ? (currentLang === 'pl' ? 'Zmień na brak' : 'Mark missing') : (currentLang === 'pl' ? '+ Mam tę książkę' : '+ Own this')}
+                  </button>
+                  <button onclick="closeAuthorModal(); openBookModal('${series.seriesId}', '${b.id}')" class="px-2.5 py-1 text-xs bg-brand-600/30 hover:bg-brand-600/50 text-brand-300 rounded font-medium border border-brand-500/40">
+                    ${currentLang === 'pl' ? 'Wydania i Ceny ↗' : 'Editions & Prices ↗'}
+                  </button>
+                </div>
+              </div>
+            `;
+          }).join('');
+
+          seriesBox.innerHTML = `
+            <div class="flex items-center justify-between border-b border-gray-800 pb-2">
+              <h4 class="font-serif font-bold text-white text-base">${series.seriesName}</h4>
+              <span class="text-xs text-gray-400 font-mono">${series.books.filter(b => isBookOwnedByCurrentUser(b.id)).length} / ${series.books.length} tomów</span>
+            </div>
+            <div class="space-y-2">
+              ${booksListHtml}
+            </div>
+          `;
+          container.appendChild(seriesBox);
+        });
+      }
+
+      document.getElementById('authorModal').classList.remove('hidden');
+    }
+
+    function toggleAuthorBookOwned(seriesId, bookId) {
+      if (!currentUser) {
+        openAuthModal();
+        return;
+      }
+      const isOwned = isBookOwnedByCurrentUser(bookId);
+      if (isOwned) {
+        delete currentUser.ownedBooks[bookId];
+      } else {
+        const s = database.find(x => x.seriesId === seriesId);
+        const b = s.books.find(x => x.id === bookId);
+        currentUser.ownedBooks[bookId] = (b.editions && b.editions.length > 0) ? b.editions[0].id : "ed-1";
+      }
+      openAuthorModal(currentAuthorName);
+      renderApp();
+    }
+
+    function closeAuthorModal() {
+      document.getElementById('authorModal').classList.add('hidden');
+    }
+
+    // --- BOOK DETAILS & PRICES MODAL ---
+    function openBookModal(seriesId, bookId) {
+      currentSeries = database.find(x => x.seriesId === seriesId);
+      currentBook = currentSeries.books.find(x => x.id === bookId);
+      modalFormatFilter = 'all';
+
+      document.getElementById('modalCover').src = currentBook.cover;
+      document.getElementById('modalTitle').innerText = currentBook.title;
+      
+      const authorLink = document.getElementById('modalAuthorLink');
+      authorLink.innerText = `${currentSeries.author} ↗`;
+      authorLink.onclick = () => {
+        closeModal();
+        openAuthorModal(currentSeries.author);
+      };
+
+      document.getElementById('modalSeries').innerText = `${currentSeries.seriesName} • Tom ${currentBook.volume}`;
+      document.getElementById('modalFormatBadge').innerText = currentBook.formatType === 'hardcover' ? '📖 Twarda oprawa' : '📕 Miękka oprawa';
+
+      setModalFormatFilter('all');
+      updateModalStatus();
+
+      document.getElementById('bookModal').classList.remove('hidden');
+    }
+
+    function updateModalStatus() {
+      const t = i18n[currentLang];
+      const badge = document.getElementById('modalStatusBadge');
+      const toggleBtn = document.getElementById('toggleOwnedBtn');
+      const isOwned = isBookOwnedByCurrentUser(currentBook.id);
+
+      if (isOwned) {
+        badge.className = "text-xs font-semibold px-2.5 py-1 rounded-full badge-owned";
+        badge.innerText = t.ownedBadge;
+        toggleBtn.className = "px-4 py-2 bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 border border-rose-500/30 rounded-lg text-sm font-semibold transition";
+        toggleBtn.innerText = t.removeOwned;
+      } else {
+        badge.className = "text-xs font-semibold px-2.5 py-1 rounded-full badge-missing";
+        badge.innerText = t.missingBadge;
+        toggleBtn.className = "px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm font-semibold transition shadow-lg shadow-emerald-900/30";
+        toggleBtn.innerText = t.markOwned;
+      }
+    }
+
+    // Render Price Comparison
+    function renderPriceComparison() {
+      const container = document.getElementById('pricesList');
+      container.innerHTML = '';
+      const t = i18n[currentLang];
+
+      let prices = currentBook.prices || [];
+      if (modalFormatFilter !== 'all') {
+        prices = prices.filter(p => p.formatType === modalFormatFilter);
+      }
+
+      const notice = document.getElementById('priceFormatNotice');
+      if (modalFormatFilter === 'all') {
+        notice.innerText = `Pokazano wszystkie oprawy (${prices.length} ofert)`;
+      } else if (modalFormatFilter === 'hardcover') {
+        notice.innerText = `Filtrujemy tylko: Twarda oprawa (${prices.length} ofert)`;
+      } else {
+        notice.innerText = `Filtrujemy tylko: Miękka oprawa (${prices.length} ofert)`;
+      }
+
+      if (prices.length === 0) {
+        container.innerHTML = `<p class="text-xs text-gray-400 py-3 text-center italic">Brak ofert w wybranej oprawie. Wybierz inną oprawę powyżej.</p>`;
+        return;
+      }
+
+      prices.forEach(p => {
+        const row = document.createElement('div');
+        row.className = `p-3 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition ${
+          p.isBest 
+            ? 'bg-emerald-950/30 border-emerald-500/50 shadow-sm' 
+            : 'bg-gray-900/80 border-gray-800/80 hover:border-gray-700'
+        }`;
+
+        const isHardcover = p.formatType === 'hardcover';
+
+        row.innerHTML = `
+          <!-- Left: Store & Format Info -->
+          <div class="flex items-center gap-3 min-w-0">
+            <div class="w-10 h-10 rounded-lg bg-gray-800 border border-gray-700 flex items-center justify-center font-bold text-xs text-gray-200 shrink-0">
+              ${p.store.slice(0, 2).toUpperCase()}
+            </div>
+            
+            <div class="min-w-0">
+              <div class="flex flex-wrap items-center gap-2">
+                <span class="text-sm font-bold text-white">${p.store}</span>
+                <span class="text-[10px] font-semibold px-2 py-0.5 rounded ${isHardcover ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : 'bg-blue-500/20 text-blue-300 border border-blue-500/30'}">
+                  ${isHardcover ? '📖 Twarda' : '📕 Miękka'}
+                </span>
+                ${p.isBest ? `<span class="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500 text-gray-950 font-black tracking-wide uppercase">${t.cheapest}</span>` : ''}
+              </div>
+              <p class="text-xs text-gray-400 mt-0.5 flex items-center gap-2">
+                <span>📦 ${p.shipping}</span>
+                <span class="text-gray-600">•</span>
+                <span class="text-emerald-400 font-medium text-[11px]">${t.inStock}</span>
+              </p>
+            </div>
+          </div>
+
+          <!-- Right: Price & Clean Action Button -->
+          <div class="flex items-center justify-between sm:justify-end gap-3 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-gray-800">
+            <div class="text-left sm:text-right">
+              <span class="text-base font-extrabold text-amber-300 font-mono">${p.price}</span>
+            </div>
+            
+            <a href="${p.url}" target="_blank" 
+               class="px-3.5 py-1.5 bg-brand-600 hover:bg-brand-500 text-white rounded-lg text-xs font-semibold transition flex items-center gap-1 shadow-md shadow-brand-950/40">
+              <span>${t.buyInStore}</span>
+            </a>
+          </div>
+        `;
+        container.appendChild(row);
+      });
+    }
+
+    // Render Editions
+    function renderEditions() {
+      const container = document.getElementById('editionsList');
+      container.innerHTML = '';
+      const t = i18n[currentLang];
+
+      let editions = currentBook.editions || [];
+      if (modalFormatFilter !== 'all') {
+        editions = editions.filter(e => e.formatType === modalFormatFilter);
+      }
+
+      if (editions.length === 0) {
+        container.innerHTML = '<p class="text-xs text-gray-500 italic py-2">Brak zarejestrowanych wydań w tym formacie.</p>';
+        return;
+      }
+
+      const selectedEditionId = getSelectedEditionForCurrentUser(currentBook.id);
+      const isOwned = isBookOwnedByCurrentUser(currentBook.id);
+
+      editions.forEach((ed, idx) => {
+        const isSelected = isOwned && selectedEditionId === ed.id;
+        const div = document.createElement('div');
+        div.className = `p-3 rounded-xl border transition cursor-pointer flex items-center justify-between gap-4 ${
+          isSelected 
+            ? 'bg-emerald-950/40 border-emerald-500/60 shadow-md shadow-emerald-950/20' 
+            : 'bg-gray-800/60 border-gray-700/70 hover:border-gray-500'
+        }`;
+
+        div.onclick = () => {
+          if (!currentUser) {
+            openAuthModal();
+            return;
+          }
+          currentUser.ownedBooks[currentBook.id] = ed.id;
+          currentBook.formatType = ed.formatType;
+          updateModalStatus();
+          renderEditions();
+          renderApp();
+        };
+
+        const isHardcover = ed.formatType === 'hardcover';
+
+        div.innerHTML = `
+          <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${isSelected ? 'bg-emerald-500 text-white' : 'bg-gray-700 text-gray-300'} shrink-0">
+              ${idx + 1}
+            </div>
+            <div>
+              <div class="flex flex-wrap items-center gap-2">
+                <span class="text-sm font-bold text-white">${ed.publisher}</span>
+                <span class="text-xs px-2 py-0.5 rounded bg-gray-700 text-gray-300 font-mono">${ed.year} r.</span>
+                <span class="text-xs font-semibold px-2 py-0.5 rounded ${isHardcover ? 'bg-amber-500/20 text-amber-300' : 'bg-blue-500/20 text-blue-300'}">
+                  ${isHardcover ? '📖 Twarda oprawa' : '📕 Miękka oprawa'}
+                </span>
+              </div>
+              <p class="text-xs text-gray-400 mt-0.5">${ed.coverDesc}</p>
+              <p class="text-[11px] font-mono text-gray-500 mt-0.5">ISBN: ${ed.isbn}</p>
+            </div>
+          </div>
+
+          <div class="shrink-0">
+            ${isSelected 
+              ? `<span class="text-xs font-bold text-emerald-400 flex items-center gap-1">${t.yourEdition}</span>` 
+              : `<button class="text-xs px-3 py-1.5 bg-gray-700 hover:bg-gray-600 rounded text-gray-200">${t.selectThis}</button>`}
+          </div>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function toggleBookOwned() {
+      if (!currentUser) {
+        openAuthModal();
+        return;
+      }
+      const isOwned = isBookOwnedByCurrentUser(currentBook.id);
+      if (isOwned) {
+        delete currentUser.ownedBooks[currentBook.id];
+      } else {
+        const defaultEd = (currentBook.editions && currentBook.editions.length > 0) ? currentBook.editions[0].id : "ed-1";
+        currentUser.ownedBooks[currentBook.id] = defaultEd;
+      }
+      updateModalStatus();
+      renderEditions();
+      renderApp();
+    }
+
+    function closeModal() {
+      document.getElementById('bookModal').classList.add('hidden');
+    }
+
+    // Tabs
+    function switchTab(tabId) {
+      document.getElementById('tab-series').classList.add('hidden');
+      document.getElementById('tab-missing').classList.add('hidden');
+      document.getElementById('tab-all').classList.add('hidden');
+
+      document.getElementById('tab-series-btn').className = "px-4 py-2 text-sm font-semibold rounded-lg text-gray-400 hover:text-white hover:bg-gray-800/50";
+      document.getElementById('tab-missing-btn').className = "px-4 py-2 text-sm font-semibold rounded-lg text-gray-400 hover:text-white hover:bg-gray-800/50 flex items-center gap-1.5";
+      document.getElementById('tab-all-btn').className = "px-4 py-2 text-sm font-semibold rounded-lg text-gray-400 hover:text-white hover:bg-gray-800/50";
+
+      if (tabId === 'series') {
+        document.getElementById('tab-series').classList.remove('hidden');
+        document.getElementById('tab-series-btn').className = "px-4 py-2 text-sm font-semibold rounded-lg bg-gray-800 text-white";
+      } else if (tabId === 'missing') {
+        document.getElementById('tab-missing').classList.remove('hidden');
+        document.getElementById('tab-missing-btn').className = "px-4 py-2 text-sm font-semibold rounded-lg bg-gray-800 text-white flex items-center gap-1.5";
+      } else if (tabId === 'all') {
+        document.getElementById('tab-all').classList.remove('hidden');
+        document.getElementById('tab-all-btn').className = "px-4 py-2 text-sm font-semibold rounded-lg bg-gray-800 text-white";
+      }
+    }
+
+    // Add Book Modal
+    function openAddModal() {
+      document.getElementById('addModal').classList.remove('hidden');
+    }
+    function closeAddModal() {
+      document.getElementById('addModal').classList.add('hidden');
+    }
+    function submitNewBook() {
+      const title = document.getElementById('newBookTitle').value;
+      const author = document.getElementById('newBookAuthor').value;
+      const fmt = document.getElementById('newBookFormat').value;
+
+      if (!title || !author) {
+        alert("Wpisz przynajmniej tytuł i autora!");
+        return;
+      }
+      alert(`Dodano "${title}" (${author}, oprawa: ${fmt === 'hardcover' ? 'Twarda' : 'Miękka'})! Zapisano na Twojej półce.`);
+      closeAddModal();
+    }
+
+    // Search filter
+    document.getElementById('searchInput').addEventListener('input', (e) => {
+      const query = e.target.value.toLowerCase().trim();
+      if (!query) {
+        renderApp();
+        return;
+      }
+      
+      const filtered = database.filter(s => 
+        s.seriesName.toLowerCase().includes(query) || 
+        s.author.toLowerCase().includes(query) ||
+        s.books.some(b => b.title.toLowerCase().includes(query))
+      );
+
+      const container = document.getElementById('seriesContainer');
+      container.innerHTML = '';
+      if (filtered.length === 0) {
+        container.innerHTML = '<p class="text-center text-gray-500 py-12">Brak wyników dla szukanej frazy / No results found.</p>';
+        return;
+      }
+
+      filtered.forEach(series => {
+        const total = series.books.length;
+        const owned = series.books.filter(b => isBookOwnedByCurrentUser(b.id)).length;
+        const card = document.createElement('div');
+        card.className = 'card-glass rounded-2xl p-6';
+        card.innerHTML = `
+          <div class="border-b border-gray-800 pb-3 mb-3 flex justify-between items-center">
+            <div>
+              <h3 class="text-xl font-bold text-white">${series.seriesName}</h3>
+              <p class="text-xs text-gray-400">Autor: <span class="text-brand-400 cursor-pointer underline" onclick="openAuthorModal('${series.author}')">${series.author}</span></p>
+            </div>
+            <span class="text-xs font-mono text-amber-400">${owned}/${total} tomów</span>
+          </div>
+          <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
+            ${series.books.map(b => `
+              <div onclick="openBookModal('${series.seriesId}', '${b.id}')" class="cursor-pointer">
+                <img src="${b.cover}" class="w-full aspect-[2/3] object-cover rounded border ${isBookOwnedByCurrentUser(b.id) ? 'border-emerald-500' : 'border-dashed border-gray-700 opacity-60'}">
+                <p class="text-xs text-white mt-1 truncate">${b.title}</p>
+              </div>
+            `).join('')}
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    });
+
+    // Run on load
+    renderAuthNav();
+    renderApp();
+  </script>
+</body>
+</html>
