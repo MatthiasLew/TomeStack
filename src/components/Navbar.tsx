@@ -34,14 +34,14 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   return (
     <header className="sticky top-0 z-30 border-b border-gray-800/80 bg-gray-950/85 backdrop-blur-md">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 min-h-16 py-2 flex flex-wrap items-center justify-between gap-2">
         {/* Brand Logo */}
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-amber-500 flex items-center justify-center text-white shadow-lg shadow-brand-900/40">
             <BookOpen className="w-6 h-6" />
           </div>
           <div>
-            <h1 className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+            <h1 className="text-lg font-bold tracking-tight text-white flex items-center gap-2">
               <span>TomeStack</span>
               <span className="text-[10px] px-2 py-0.5 rounded-full bg-brand-500/20 text-brand-400 font-semibold border border-brand-500/30">
                 v2.2 React
@@ -81,7 +81,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
 
         {/* Right Actions */}
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2">
           {/* Quick Barcode Scanner Button */}
           {onOpenScanner && (
             <button
@@ -136,7 +136,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   <p className="text-xs font-bold text-white truncate max-w-[90px]">
                     {currentUser.name}
                   </p>
-                  <p className="text-[10px] text-brand-400 font-medium">Półka online</p>
+                  <p className="text-[10px] text-brand-400 font-medium">TomeStack</p>
                 </div>
               </button>
               <button

@@ -1,40 +1,51 @@
-# 📚 TomeStack – The Series Completionist & Edition Tracker
+# TomeStack
 
-> Twoja osobista biblioteczka online, która śledzi polskie i zagraniczne wydania, wykrywa brakujące tomy w seriach, pozwala przeglądać pełne bibliografie autorów oraz porównuje ceny w księgarniach internetowych.
+Katalog książek, wydań i serii w Next.js + React + TypeScript.
 
----
+## Uruchomienie
 
-## 🖥️ Jak uruchomić prototyp (Mockup)?
+Node.js 22:
 
-1. Przejdź do folderu:
-   ```text
-   C:\Users\Praca\Desktop\Plany\Biblioteka online\
-   ```
-2. Kliknij dwukrotnie w plik:
-   👉 **`index.html`**
-3. Strona uruchomi się bezpośrednio w Twojej przeglądarce internetowej!
+```sh
+npm ci
+cp .env.example .env.local
+npm run dev
+```
 
----
+Otwórz http://localhost:3000. W PowerShell plik środowiska skopiujesz poleceniem `Copy-Item .env.example .env.local`.
 
-## ✨ Kluczowe Funkcje Aplikacji
+**Uruchamiaj aplikację Next.js.** `index.html` jest archiwalną demonstracją interfejsu; jego logowanie i ceny są symulowane, a przycisk dodawania nie zapisuje książek.
 
-* 👤 **Prywatne konta i osobiste biblioteczki (NOWOŚĆ w v2.2):**
-  * Każdy użytkownik loguje się i posiada **swoją własną, niezależną półkę**.
-  * W prototypie możesz w ułamku sekundy przełączać się między kontami demonstracyjnymi:
-    * **👤 Kamil** (kolekcja fantasy: Wiedźmin 75%, Diuna, itp.)
-    * **👤 Anna** (fanka klasyki: Harry Potter 100%, Tolkien 100%)
-    * **👁️ Gość (Wylogowany)** (przeglądanie katalogu z zachętą do rejestracji)
-  * Statystyki ukończenia serii i radar braków przeliczają się natychmiast po zmianie użytkownika!
-* 📖 **Wybór formatu oprawy (Twarda vs Miękka):**
-  * Filtrowanie całej biblioteki i pojedynczych tomów pod kątem typu oprawy (`📖 Twarda` / `📕 Miękka`).
-  * Wybór dokładnego wydania posiadanego na półce (rok, wydawnictwo, ISBN, okładka).
-* 💰 **Porównywarka Cen w Księgarniach Online:** Bezpośrednie porównanie ofert w polskich księgarniach (*Świat Książki, TaniaKsiążka.pl, Empik, Allegro*) z filtrowaniem według typu oprawy, oznaczeniem najtańszej oferty i bezpośrednim linkiem do zakupu.
-* 🎯 **Radar Braków (Completionist Mode):** Szybka lista wszystkich brakujących tomów ze wszystkich Twoich serii.
-* ✍️ **Profil Autora i Pełna Bibliografia:** Kliknij nazwisko dowolnego autora, aby zobaczyć wszystkie jego cykle, książki samodzielne oraz stopień skompletowania jego twórczości przez zalogowanego użytkownika.
-* 🌐 **Bilingual (PL / EN):** Błyskawiczny przełącznik języka w prawym górnym rogu.
+## Konta i przechowywanie
 
----
+Bez konfiguracji Supabase korzystasz z **profilu lokalnego bez hasła**. Każdy, kto korzysta z tej samej przeglądarki, może otworzyć profil po nazwie. Ponowne wpisanie tej samej nazwy przywraca jego kolekcję.
 
-## 🛠️ Architektura i Baza Danych:
-Szczegółowe wyjaśnienie doboru technologii (Next.js, PostgreSQL/Supabase, API Biblioteki Narodowej) znajdziesz w:
-👉 [**`ARCHITEKTURA_I_TECHNOLOGIE.md`**](file:///C:/Users/Praca/Desktop/Plany/Biblioteka%20online/ARCHITEKTURA_I_TECHNOLOGIE.md).
+Dla kont online ustaw `NEXT_PUBLIC_SUPABASE_URL` i `NEXT_PUBLIC_SUPABASE_ANON_KEY`, uruchom `supabase/schema.sql` w Supabase i skonfiguruj logowanie e-mail. Jeśli projekt wymaga potwierdzenia adresu, potwierdź e-mail przed logowaniem.
+
+**Istniejąca baza wymaga ponownego uruchomienia poprawionego skryptu SQL.** Sam commit nie zmienia wdrożonych reguł RLS. Skrypt blokuje dawny wyjątek `user-*`, a stare rekordy pozostawia do ręcznej, zweryfikowanej migracji.
+
+Do chmury trafia tylko oznaczenie posiadanych książek i wydań. Katalog, statusy czytania i ukrywanie pozostają w przeglądarce. Pełna synchronizacja między urządzeniami nie jest jeszcze gotowa; nie ma też trwałej kolejki ponawiania nieudanych zapisów.
+
+Poprzednia aktywna sesja jest przenoszona do profilu lokalnego o dotychczasowej nazwie. Jawne hasła zapisane przez starą wersję są usuwane. Konta Supabase trzeba utworzyć oddzielnie; starych identyfikatorów nie można uznać za potwierdzoną tożsamość.
+
+## Funkcje i ograniczenia
+
+- Dodawanie książek i wydań, import z katalogów, status czytania, filtry, radar braków.
+- Skanowanie ISBN wymaga dostępu do aparatu i HTTPS lub localhost. Po skanowaniu dane można uzupełnić w formularzu.
+- Ceny w kolekcjach demo są poglądowe. Brak integracji z aktualnymi ofertami sklepów.
+- Importowane książki nie otrzymują fikcyjnych cen, ISBN ani roku wydania.
+- Dane kuratorowane/demo wymagają weryfikacji względem konkretnego wydania. Wynik wyszukiwania nie gwarantuje pełnej bibliografii.
+- PWA, pełna synchronizacja, pełne tłumaczenia/dostępność i ograniczanie ruchu API pozostają do rozwinięcia.
+
+## Weryfikacja
+
+```sh
+npm test
+npm run typecheck
+npm run lint
+npm run build
+```
+
+Testy używają atrap odpowiedzi zewnętrznych API, testów stanu React i lokalnego silnika PostgreSQL (PGlite) do sprawdzenia izolacji RLS.
+
+Szczegóły: [raport poprawek](AUDIT_FIXES.md), [README EN](README.md), [proponowana architektura](ARCHITEKTURA_I_TECHNOLOGIE.md).

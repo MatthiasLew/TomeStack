@@ -11,6 +11,7 @@ export interface LiveStoreOffer extends PriceOffer {
 
 export interface SeriesBasketOptimization {
   totalMissingBooks: number;
+  pricedBooksCount: number;
   cheapestCombinedPrice: number; // sum of best price per book
   bestSingleStore?: {
     storeName: string;
@@ -34,11 +35,16 @@ export interface SeriesBasketOptimization {
  */
 export function parsePriceNumber(priceStr: string): number {
   if (!priceStr) return 0;
-  const sanitized = priceStr
-    .replace(/[^\d.,]/g, "")
-    .replace(",", ".");
-  const val = parseFloat(sanitized);
-  return isNaN(val) ? 0 : val;
+  if (/-\s*\d/.test(priceStr)) return 0;
+  let sanitized = priceStr.replace(/[^\d.,]/g, "");
+  const separator = Math.max(sanitized.lastIndexOf(','), sanitized.lastIndexOf('.'));
+  if (separator >= 0) {
+    const decimalDigits = sanitized.length - separator - 1;
+    sanitized = decimalDigits <= 2 ? sanitized.slice(0, separator).replace(/[.,]/g, '') + '.' + sanitized.slice(separator + 1)
+      : sanitized.replace(/[.,]/g, '');
+  }
+  const val = Number(sanitized);
+  return Number.isFinite(val) && val >= 0 ? val : 0;
 }
 
 /**
@@ -54,6 +60,8 @@ export function generateStorePurchaseUrl(store: string, title: string, isbn?: st
     case "empik":
       return `https://www.empik.com/szukaj/produkt?q=${encoded}&qtype=basicForm`;
     case "taniaksiazka":
+    case "taniaksiążka":
+    case "taniaksiążka.pl":
       return `https://www.taniaksiazka.pl/szukaj/q-${encoded}`;
     case "świat książki":
     case "swiat ksiazki":
@@ -97,7 +105,7 @@ export function calculateSeriesBasket(
       return p.formatType === formatPreference;
     });
 
-    const activeOffers = filteredOffers.length > 0 ? filteredOffers : b.prices;
+    const activeOffers = filteredOffers.filter(p => parsePriceNumber(p.price) > 0);
 
     const liveOffers: LiveStoreOffer[] = activeOffers.map((p) => {
       const num = parsePriceNumber(p.price);
@@ -118,7 +126,7 @@ export function calculateSeriesBasket(
       storeName: "Księgarnie",
       formatType: b.formatType,
       format: b.formatType === "hardcover" ? "Twarda" : "Miękka",
-      price: "0 zł",
+      price: "Brak ceny",
       shipping: "Standard",
       url: generateStorePurchaseUrl("allegro", b.title),
       inStock: false,
@@ -128,17 +136,25 @@ export function calculateSeriesBasket(
     cheapestCombinedPrice += best.normalizedPrice;
 
     // Aggregate single store options
+    // Count each title once per store, even if it has several editions/offers.
+    const seenStores = new Set<string>();
     liveOffers.forEach((offer) => {
-      if (!storeAggregates[offer.storeName]) {
-        storeAggregates[offer.storeName] = {
+      const storeKey = offer.storeName.trim().toLowerCase();
+      if (seenStores.has(storeKey)) return;
+      seenStores.add(storeKey);
+      const shipping = /gratis|free/i.test(offer.shipping) ? 0
+        : /\d/.test(offer.shipping) ? parsePriceNumber(offer.shipping) : 9.99;
+      if (!storeAggregates[storeKey]) {
+        storeAggregates[storeKey] = {
           storeName: offer.storeName,
           totalPrice: 0,
           availableBooksCount: 0,
-          shippingEstimate: offer.shipping.toLowerCase().includes("smart") || offer.shipping.toLowerCase().includes("gratis") ? 0 : 9.99,
+          shippingEstimate: shipping,
         };
       }
-      storeAggregates[offer.storeName].totalPrice += offer.normalizedPrice;
-      storeAggregates[offer.storeName].availableBooksCount += 1;
+      storeAggregates[storeKey].shippingEstimate = Math.max(storeAggregates[storeKey].shippingEstimate, shipping);
+      storeAggregates[storeKey].totalPrice += offer.normalizedPrice;
+      storeAggregates[storeKey].availableBooksCount += 1;
     });
 
     breakdown.push({
@@ -176,6 +192,7 @@ export function calculateSeriesBasket(
 
   return {
     totalMissingBooks: missingBooks.length,
+    pricedBooksCount: breakdown.filter(b => b.bestOffer.inStock).length,
     cheapestCombinedPrice: Math.round(cheapestCombinedPrice * 100) / 100,
     bestSingleStore,
     breakdown,

@@ -52,7 +52,8 @@ test("extractYear extracts 4-digit years accurately", () => {
   assert.equal(extractYear(undefined), undefined);
 });
 
-test("unifiedSearchByAuthor returns unique books without duplicates", async () => {
+test("unifiedSearchByAuthor returns unique books without duplicates", async (t) => {
+  t.mock.method(globalThis, "fetch", async () => new Response(JSON.stringify({}), { status: 200 }));
   const books = await unifiedSearchByAuthor("George Orwell", 20);
   assert.ok(books.length >= 4);
 

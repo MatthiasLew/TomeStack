@@ -35,8 +35,7 @@ export function cleanAuthor(rawAuthor?: string): string {
   if (commaIdx !== -1) {
     const lastName = cleaned.substring(0, commaIdx).trim();
     const firstName = cleaned.substring(commaIdx + 1).replace(/\.$/, "").trim();
-    const simpleFirst = firstName.split(/\s+/)[0] || firstName;
-    return `${simpleFirst} ${lastName}`.trim();
+    return `${firstName} ${lastName}`.trim();
   }
   return cleaned.replace(/\.$/, "").trim();
 }
@@ -49,7 +48,7 @@ export function cleanTitle(rawTitle?: string): string {
   let base = rawTitle.trim();
 
   // 1. Remove authorship / responsibility statements after slash (e.g. "... / Clergyman's daughter")
-  const slashIdx = base.indexOf("/");
+  const slashIdx = base.search(/\s+\/\s+/);
   if (slashIdx !== -1) {
     base = base.substring(0, slashIdx).trim();
   }
@@ -68,9 +67,8 @@ export function cleanTitle(rawTitle?: string): string {
   if (colonIdx !== -1) {
     const mainTitle = base.substring(0, colonIdx).trim();
     const subTitle = base.substring(colonIdx + 1).trim();
-    const genericGenrePattern = /^(powie[sś][cć]|opowiadani|esej|reporta[zż]|bajka|nowel|dramat|poemat|poezj|wiersz|wspomnien|autobiograf|biograf|felieton|utw[oó]r|antologi|wyb[oó]r|tom|cz[eę][sś][cć]|cz\.|wydani|przek[lł]ad|prze[lł]|proza)/i;
 
-    if (genericGenrePattern.test(subTitle) || (mainTitle.length >= 4 && subTitle.length <= 35)) {
+    if (/^(powie[sś][cć]|bajka polityczna|reporta[zż])\s*[.,;:]?$/i.test(subTitle)) {
       base = mainTitle;
     }
   }
@@ -111,13 +109,13 @@ export async function fetchBnByIsbn(isbn: string): Promise<NormalizedBnBook | nu
     const raw: RawBnBib = data.bibs[0];
     const yearNum = typeof raw.publicationYear === "number"
       ? raw.publicationYear
-      : parseInt(String(raw.publicationYear || "").replace(/\D/g, ""), 10) || new Date().getFullYear();
+      : Number(String(raw.publicationYear || "").match(/\b[12]\d{3}\b/)?.[0]) || 0;
 
     return {
       id: raw.id,
       title: cleanTitle(raw.title),
       author: cleanAuthor(raw.author),
-      publisher: (raw.publisher || "Nieznane").split(/\s+/)[0] || "Wydawnictwo",
+      publisher: (raw.publisher || "Nieznane").replace(/[;,\s]+$/, "").trim(),
       publicationYear: yearNum,
       isbn: cleanIsbn,
       formatType: detectFormat(raw),
@@ -157,7 +155,7 @@ export async function fetchBnByQuery(params: {
     return data.bibs.map((raw: RawBnBib) => {
       const yearNum = typeof raw.publicationYear === "number"
         ? raw.publicationYear
-        : parseInt(String(raw.publicationYear || "").replace(/\D/g, ""), 10) || new Date().getFullYear();
+        : Number(String(raw.publicationYear || "").match(/\b[12]\d{3}\b/)?.[0]) || 0;
 
       const extractedIsbn = (raw.isbnIssn || "").split(/\s+/)[0] || "";
 

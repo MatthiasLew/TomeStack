@@ -78,6 +78,8 @@
   </style>
 </head>
 <body class="min-h-screen flex flex-col antialiased selection:bg-brand-500 selection:text-white">
+  <aside style="padding:12px;background:#78350f;color:white;text-align:center">Archiwalny prototyp — dane i logowanie są demonstracyjne. Zapis kolekcji: aplikacja Next.js opisana w README.</aside>
+
 
   <!-- TOP NAVBAR -->
   <header class="sticky top-0 z-30 border-b border-gray-800/80 bg-gray-950/85 backdrop-blur-md">
@@ -320,7 +322,7 @@
         </div>
         <div>
           <label class="text-xs text-gray-400">Hasło</label>
-          <input type="password" id="authPassword" value="••••••••" class="w-full bg-gray-800 border border-gray-700 rounded p-2 text-sm text-white mt-1">
+          <input type="text" id="authPassword" value="Demo — bez hasła" disabled class="w-full bg-gray-800 border border-gray-700 rounded p-2 text-sm text-white mt-1">
         </div>
         <div>
           <label class="text-xs text-gray-400">Twoje Imię / Nick do biblioteczki</label>
@@ -704,6 +706,11 @@
     }
 
     // --- AUTHENTICATION LOGIC & SWITCHER ---
+    function escapeHtml(value) {
+      const element = document.createElement('span');
+      element.textContent = String(value);
+      return element.innerHTML;
+    }
     function renderAuthNav() {
       const widget = document.getElementById('authNavWidget');
       const t = i18n[currentLang];
@@ -714,7 +721,7 @@
             <div class="flex items-center gap-1.5 cursor-pointer" onclick="openAuthModal()">
               <img src="${currentUser.avatar}" class="w-8 h-8 rounded-full object-cover border border-brand-500 shadow">
               <div class="hidden sm:block text-left leading-tight">
-                <p class="text-xs font-bold text-white truncate max-w-[90px]">${currentUser.name}</p>
+                <p class="text-xs font-bold text-white truncate max-w-[90px]">${escapeHtml(currentUser.name)}</p>
                 <p class="text-[10px] text-brand-400 font-medium">Półka online</p>
               </div>
             </div>
@@ -1828,7 +1835,7 @@
         alert("Wpisz przynajmniej tytuł i autora!");
         return;
       }
-      alert(`Dodano "${title}" (${author}, oprawa: ${fmt === 'hardcover' ? 'Twarda' : 'Miękka'})! Zapisano na Twojej półce.`);
+      alert("To jest demonstracja interfejsu. Aby zapisać książkę, uruchom aplikację Next.js opisaną w README.");
       closeAddModal();
     }
 

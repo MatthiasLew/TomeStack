@@ -11,7 +11,7 @@ export interface UserShelfRecord {
  * Loads user owned books from Supabase if configured, otherwise returns null for local mock fallback.
  */
 export async function loadUserShelfFromCloud(userId: string): Promise<Record<string, string> | null> {
-  if (!isSupabaseConfigured || !supabase) {
+  if (!isSupabaseConfigured || !supabase || userId.startsWith("local-")) {
     return null;
   }
 
@@ -48,7 +48,7 @@ export async function saveUserBookToCloud(
   bookId: string,
   editionId: string
 ): Promise<boolean> {
-  if (!isSupabaseConfigured || !supabase) {
+  if (!isSupabaseConfigured || !supabase || userId.startsWith("local-")) {
     return false;
   }
 
@@ -80,7 +80,7 @@ export async function removeUserBookFromCloud(
   userId: string,
   bookId: string
 ): Promise<boolean> {
-  if (!isSupabaseConfigured || !supabase) {
+  if (!isSupabaseConfigured || !supabase || userId.startsWith("local-")) {
     return false;
   }
 

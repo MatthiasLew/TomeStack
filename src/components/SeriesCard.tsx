@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { Series, Book, FormatFilter, StatusFilter, Language, UserAccount, ReadingStatus } from "@/types";
 import { translations } from "@/data/mockData";
 import { Check, Plus, ChevronDown, ChevronUp, Eye, EyeOff } from "lucide-react";
+import { matchesBookFormat } from "@/lib/library/catalog";
 import { BookCover } from "./BookCover";
 
 interface SeriesCardProps {
@@ -56,7 +57,7 @@ export const SeriesCard: React.FC<SeriesCardProps> = ({
   const ownedCount = series.books.filter(
     (b) => currentUser?.ownedBooks && currentUser.ownedBooks[b.id]
   ).length;
-  const percent = Math.round((ownedCount / totalBooks) * 100);
+  const percent = totalBooks ? Math.round((ownedCount / totalBooks) * 100) : 0;
   const isComplete = percent === 100;
 
   const isSeriesHidden = Boolean(currentUser?.hiddenSeries?.[series.seriesId]);
@@ -75,7 +76,7 @@ export const SeriesCard: React.FC<SeriesCardProps> = ({
     if (showHidden && !isHidden && !isSeriesHidden) return false;
 
     // Format filter
-    if (formatFilter !== "all" && book.formatType !== formatFilter) {
+    if (!matchesBookFormat(book, formatFilter, currentUser?.ownedBooks?.[book.id])) {
       return false;
     }
 

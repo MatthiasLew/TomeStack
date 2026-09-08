@@ -7,10 +7,7 @@ import {
   StatusFilter,
   ActiveTab,
   Book,
-  BookEdition,
   Series,
-  UserAccount,
-  BindingFormat,
   ReadingStatus,
 } from "@/types";
 import {
@@ -34,7 +31,7 @@ import { EmptyLibraryHero } from "@/components/EmptyLibraryHero";
 import {
   canonicalizeBookTitle,
   cleanDisplayTitle,
-  CURATED_AUTHOR_BIBLIOGRAPHIES,
+  UnifiedBookMetadata,
 } from "@/lib/api/bookProviders";
 import {
   loadUserShelfFromCloud,
@@ -42,168 +39,55 @@ import {
   removeUserBookFromCloud,
 } from "@/lib/supabase/shelfSync";
 
-/**
- * Consolidates series books so that any duplicates representing the same literary work
- * are automatically merged into a single card with multiple editions.
- * Automatically enriches missing or broken covers with verified high-res covers.
- */
+import { useAccount, shelfKey } from "@/hooks/useAccount";
+import { addBookToCatalog, AddBookData } from "@/lib/library/catalog";
+import { supabase } from "@/lib/supabase/client";
+
+// Preserve book and edition IDs referenced by saved user state.
 function consolidateSeriesList(list: Series[]): Series[] {
-  // Build lookup of verified high-res covers from initial database & curated bibliographies
-  const knownCoverMap = new Map<string, string>();
-
-  for (const s of initialSeriesDatabase) {
-    for (const b of s.books) {
-      if (b.cover && !b.cover.includes("/b/isbn/")) {
-        const k = canonicalizeBookTitle(cleanDisplayTitle(b.title));
-        if (k && !knownCoverMap.has(k)) {
-          knownCoverMap.set(k, b.cover);
-        }
-      }
-    }
-  }
-
-  for (const authorWorks of Object.values(CURATED_AUTHOR_BIBLIOGRAPHIES)) {
-    for (const w of authorWorks) {
-      if (w.coverUrl && !w.coverUrl.includes("/b/isbn/")) {
-        const k = canonicalizeBookTitle(cleanDisplayTitle(w.title));
-        if (k && !knownCoverMap.has(k)) {
-          knownCoverMap.set(k, w.coverUrl);
-        }
-      }
-    }
-  }
-
-  return list.map((series) => {
-    const canonicalMap = new Map<string, Book>();
-
-    for (const book of series.books) {
-      const displayTitle = cleanDisplayTitle(book.title);
-      const key = canonicalizeBookTitle(displayTitle);
-      if (!key) continue;
-
-      const verifiedCover = knownCoverMap.get(key);
-
-      const existing = canonicalMap.get(key);
-      if (!existing) {
-        let cover = book.cover;
-        if ((!cover || cover.includes("/b/isbn/")) && verifiedCover) {
-          cover = verifiedCover;
-        }
-
-        canonicalMap.set(key, {
-          ...book,
-          title: displayTitle,
-          cover: cover || "",
-        });
-      } else {
-        // Merge editions (deduplicating by ISBN or format/publisher)
-        const existingIsbns = new Set(existing.editions.map((e) => e.isbn).filter(Boolean));
-        const mergedEditions = [...existing.editions];
-        for (const ed of book.editions) {
-          if (!ed.isbn || !existingIsbns.has(ed.isbn)) {
-            mergedEditions.push(ed);
-            if (ed.isbn) existingIsbns.add(ed.isbn);
-          }
-        }
-
-        // Merge prices (deduplicating by store + formatType)
-        const mergedPrices = [...existing.prices];
-        for (const p of book.prices) {
-          if (!mergedPrices.some((mp) => mp.store === p.store && mp.formatType === p.formatType)) {
-            mergedPrices.push(p);
-          }
-        }
-
-        // Prefer verified cover, existing cover, or incoming cover
-        let cover = existing.cover || book.cover;
-        if ((!cover || cover.includes("/b/isbn/")) && verifiedCover) {
-          cover = verifiedCover;
-        }
-
-        // Keep shorter / cleaner title
-        const currentTitle = cleanDisplayTitle(existing.title);
-        const candidateTitle = cleanDisplayTitle(book.title);
-        const title = candidateTitle.length < currentTitle.length ? candidateTitle : currentTitle;
-
-        canonicalMap.set(key, {
-          ...existing,
-          title,
-          cover: cover || "",
-          editions: mergedEditions,
-          prices: mergedPrices,
-        });
-      }
-    }
-
-    const consolidatedBooks = Array.from(canonicalMap.values()).map((b, idx) => ({
-      ...b,
-      volume: idx + 1,
-    }));
-
-    return {
-      ...series,
-      books: consolidatedBooks,
-    };
-  });
+  return list.map(series => ({ ...series, books: series.books.map(book => ({ ...book, title: cleanDisplayTitle(book.title) })) }));
 }
 
 export default function Home() {
+  const account = useAccount();
+  if (!account.loaded) return <main className="p-8" role="status">Ładowanie… / Loading…</main>;
+  return <LibraryHome key={account.currentUser?.id || 'guest'} {...account} />;
+}
+
+function LibraryHome({ currentUser, setCurrentUser, logout, error }: ReturnType<typeof useAccount>) {
   const [lang, setLang] = useState<Language>("pl");
-  const [currentUser, setCurrentUser] = useState<UserAccount | null>(null);
-  const [isAuthLoaded, setIsAuthLoaded] = useState(false);
-  const [seriesList, setSeriesList] = useState<Series[]>([]);
-
-  // Load user session from localStorage on startup
+  const [seriesList, setSeriesState] = useState<Series[]>([]);
+  const seriesRef = React.useRef<Series[]>([]);
+  const [shelfLoaded, setShelfLoaded] = useState(false);
+  const [storageError, setStorageError] = useState('');
+  const mutationVersion = React.useRef(0);
+  const mounted = React.useRef(true);
+  React.useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
+  const setSeriesList = (update: React.SetStateAction<Series[]>) => {
+    const next = typeof update === 'function' ? update(seriesRef.current) : update;
+    seriesRef.current = next;
+    setSeriesState(next);
+  };
+  const storageKey = shelfKey(currentUser?.id);
   React.useEffect(() => {
     try {
-      const stored = localStorage.getItem("tomestack_user");
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        setCurrentUser(parsed);
-      } else {
-        // Automatically prompt sign-in on first visit so each user has their own private shelf
-        setIsAuthOpen(true);
-      }
-    } catch {
-      setIsAuthOpen(true);
-    } finally {
-      setIsAuthLoaded(true);
-    }
-  }, []);
-
-  // Save session when user changes
+      const parsed = JSON.parse(localStorage.getItem(storageKey) || '[]');
+      if (!Array.isArray(parsed) || !parsed.every(s => typeof s.seriesId === 'string' && typeof s.author === 'string' && typeof s.seriesName === 'string' && Array.isArray(s.books) && s.books.every((b: Book) => typeof b.title === 'string' && Array.isArray(b.editions) && Array.isArray(b.prices)))) throw new Error('Invalid shelf');
+      const list = consolidateSeriesList(parsed);
+      seriesRef.current = list;
+      setSeriesState(list);
+      setShelfLoaded(true);
+    } catch { setStorageError('Nie można odczytać półki. Zachowano oryginalny zapis. / Could not read shelf; original data preserved.'); }
+  }, [storageKey]);
   React.useEffect(() => {
-    if (!isAuthLoaded) return;
-    if (currentUser) {
-      localStorage.setItem("tomestack_user", JSON.stringify(currentUser));
-    } else {
-      localStorage.removeItem("tomestack_user");
-    }
-  }, [currentUser, isAuthLoaded]);
-
-  // Load user's saved books from localStorage on startup and auto-consolidate duplicates
-  React.useEffect(() => {
-    try {
-      const storedSeries = localStorage.getItem("tomestack_user_shelf_v4");
-      if (storedSeries) {
-        const parsed = JSON.parse(storedSeries);
-        if (Array.isArray(parsed)) {
-          setSeriesList(consolidateSeriesList(parsed));
-        }
-      }
-    } catch {
-      // ignore
-    }
-  }, []);
-
-  // Save user's shelf whenever books/authors are added or removed
-  React.useEffect(() => {
-    try {
-      localStorage.setItem("tomestack_user_shelf_v4", JSON.stringify(seriesList));
-    } catch {
-      // ignore
-    }
-  }, [seriesList]);
+    if (!shelfLoaded) return;
+    try { localStorage.setItem(storageKey, JSON.stringify(seriesList)); }
+    catch { setStorageError('Nie udało się zapisać półki. / Could not save shelf.'); }
+  }, [seriesList, shelfLoaded, storageKey]);
+  React.useEffect(() => { document.documentElement.lang = lang; }, [lang]);
+  const reportSync = (ok: boolean) => {
+    if (!ok && supabase && mounted.current) setStorageError('Zmiana jest lokalna: zapis w chmurze nie powiódł się. / Change is local: cloud save failed.');
+  };
 
   // Handler to load demo library on user request
   const handleLoadDemoData = () => {
@@ -213,7 +97,11 @@ export default function Home() {
   // Handler to clear library back to empty state
   const handleClearLibrary = () => {
     setSeriesList([]);
-    localStorage.removeItem("tomestack_user_shelf_v4");
+    mutationVersion.current++;
+    if (currentUser) {
+      Object.keys(currentUser.ownedBooks).forEach(id => { void removeUserBookFromCloud(currentUser.id, id).then(reportSync); });
+      setCurrentUser(prev => prev ? { ...prev, ownedBooks: {}, readingStatus: {}, hiddenBooks: {}, hiddenSeries: {} } : null);
+    }
   };
 
   // Filters & Tabs
@@ -230,7 +118,8 @@ export default function Home() {
   } | null>(null);
   const [activeAuthorName, setActiveAuthorName] = useState<string | null>(null);
   const [isAddBookOpen, setIsAddBookOpen] = useState(false);
-  const [isAuthOpen, setIsAuthOpen] = useState(false);
+  const [scannedIsbn, setScannedIsbn] = useState("");
+  const [isAuthOpen, setIsAuthOpen] = useState(!currentUser);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [isAuthorSearchOpen, setIsAuthorSearchOpen] = useState(false);
   const [authorSearchInitialQuery, setAuthorSearchInitialQuery] = useState("");
@@ -310,14 +199,15 @@ export default function Home() {
   const currentUserId = currentUser?.id;
   React.useEffect(() => {
     if (!currentUserId) return;
-    loadUserShelfFromCloud(currentUserId).then((cloudShelf) => {
-      if (cloudShelf && Object.keys(cloudShelf).length > 0) {
-        setCurrentUser((prev) =>
-          prev ? { ...prev, ownedBooks: { ...(prev.ownedBooks || {}), ...cloudShelf } } : null
-        );
+    let cancelled = false;
+    const version = mutationVersion.current;
+    loadUserShelfFromCloud(currentUserId).then(cloudShelf => {
+      if (!cancelled && cloudShelf !== null && version === mutationVersion.current) {
+        setCurrentUser(prev => prev?.id === currentUserId ? { ...prev, ownedBooks: cloudShelf } : prev);
       }
     });
-  }, [currentUserId]);
+    return () => { cancelled = true; };
+  }, [currentUserId, setCurrentUser]);
 
   const handleToggleOwned = (bookId: string, defaultEditionId: string) => {
     if (!currentUser) {
@@ -328,14 +218,14 @@ export default function Home() {
     const currentOwned = { ...(currentUser.ownedBooks || {}) };
     if (currentOwned[bookId]) {
       delete currentOwned[bookId];
-      removeUserBookFromCloud(currentUser.id, bookId);
+      void removeUserBookFromCloud(currentUser.id, bookId).then(reportSync);
     } else {
       currentOwned[bookId] = defaultEditionId;
-      saveUserBookToCloud(currentUser.id, bookId, defaultEditionId);
+      void saveUserBookToCloud(currentUser.id, bookId, defaultEditionId).then(reportSync);
     }
 
-    const updatedUser = { ...currentUser, ownedBooks: currentOwned };
-    setCurrentUser(updatedUser);
+    mutationVersion.current++;
+    setCurrentUser(prev => prev ? { ...prev, ownedBooks: currentOwned } : prev);
   };
 
   const handleSelectEdition = (bookId: string, editionId: string) => {
@@ -344,12 +234,9 @@ export default function Home() {
       return;
     }
 
-    const currentOwned = { ...(currentUser.ownedBooks || {}) };
-    currentOwned[bookId] = editionId;
-    saveUserBookToCloud(currentUser.id, bookId, editionId);
-
-    const updatedUser = { ...currentUser, ownedBooks: currentOwned };
-    setCurrentUser(updatedUser);
+    mutationVersion.current++;
+    void saveUserBookToCloud(currentUser.id, bookId, editionId).then(reportSync);
+    setCurrentUser(prev => prev ? { ...prev, ownedBooks: { ...prev.ownedBooks, [bookId]: editionId } } : prev);
   };
 
   // Reading status handlers
@@ -359,18 +246,12 @@ export default function Home() {
       return;
     }
 
-    const currentStatuses = { ...(currentUser.readingStatus || {}) };
-    if (status === "unread") {
-      delete currentStatuses[bookId];
-    } else {
-      currentStatuses[bookId] = status;
-    }
-
-    const updatedUser = {
-      ...currentUser,
-      readingStatus: currentStatuses,
-    };
-    setCurrentUser(updatedUser);
+    setCurrentUser(prev => {
+      if (!prev) return prev;
+      const statuses = { ...prev.readingStatus };
+      if (status === 'unread') delete statuses[bookId]; else statuses[bookId] = status;
+      return { ...prev, readingStatus: statuses };
+    });
   };
 
   // Hidden books / series handlers
@@ -414,252 +295,50 @@ export default function Home() {
     return hiddenBooksCount + hiddenSeriesCount;
   }, [currentUser]);
 
-  const handleAddBook = (data: {
-    title: string;
-    author: string;
-    series: string;
-    formatType: BindingFormat;
-    isbn?: string;
-    cover?: string;
-    readingStatus?: ReadingStatus;
-  }) => {
-    const cleanTitle = cleanDisplayTitle(data.title);
-    const workKey = canonicalizeBookTitle(cleanTitle);
-
-    let targetBookId = `book-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
-    const newEditionId = `ed-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
-
-    const newEdition: BookEdition = {
-      id: newEditionId,
-      formatType: data.formatType,
-      publisher: data.series || "Wydawnictwo",
-      year: new Date().getFullYear(),
-      format: data.formatType === "hardcover" ? "Oprawa twarda" : "Oprawa miękka",
-      isbn: data.isbn || "9780000000000",
-    };
-
-    setSeriesList((prev) => {
-      const targetSeriesName = data.series || `Twórczość: ${data.author}`;
-      const existing = prev.find(
-        (s) =>
-          s.seriesName.toLowerCase() === targetSeriesName.toLowerCase() ||
-          s.author.toLowerCase().trim() === data.author.toLowerCase().trim()
-      );
-
-      if (existing) {
-        // Check if this book (by canonical key) is already in the series!
-        const existingBookIndex = existing.books.findIndex(
-          (b) => canonicalizeBookTitle(b.title) === workKey
-        );
-
-        if (existingBookIndex !== -1) {
-          // MERGE INTO EXISTING BOOK CARD AS AN EDITION!
-          const existingBook = existing.books[existingBookIndex];
-          targetBookId = existingBook.id;
-
-          const editionExists = existingBook.editions.some(
-            (e) => (data.isbn && e.isbn === data.isbn) || (e.formatType === data.formatType && e.publisher === newEdition.publisher)
-          );
-
-          const updatedEditions = editionExists
-            ? existingBook.editions
-            : [...existingBook.editions, newEdition];
-
-          const updatedCover = existingBook.cover || data.cover;
-
-          const updatedBooks = existing.books.map((b, idx) =>
-            idx === existingBookIndex
-              ? {
-                  ...b,
-                  cover: updatedCover,
-                  editions: updatedEditions,
-                }
-              : b
-          );
-
-          return prev.map((s) =>
-            s.seriesId === existing.seriesId ? { ...s, books: updatedBooks } : s
-          );
-        }
-
-        // Otherwise, add as a new book in the series
-        const newBook: Book = {
-          id: targetBookId,
-          title: cleanTitle,
-          volume: existing.books.length + 1,
-          formatType: data.formatType,
-          cover: data.cover || (data.isbn ? `https://covers.openlibrary.org/b/isbn/${data.isbn}-L.jpg?default=false` : undefined),
-          prices: [
-            {
-              store: "Księgarnia",
-              formatType: data.formatType,
-              format: data.formatType === "hardcover" ? "Twarda oprawa" : "Miękka oprawa",
-              price: "39,90 zł",
-              shipping: "Dostępne",
-              isBest: true,
-              url: "https://www.swiatksiazki.pl",
-            },
-          ],
-          editions: [newEdition],
-        };
-
-        return prev.map((s) =>
-          s.seriesId === existing.seriesId
-            ? { ...s, books: [...s.books, newBook] }
-            : s
-        );
-      } else {
-        // Create new series with new book
-        const newSeriesId = `series-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
-        const newBook: Book = {
-          id: targetBookId,
-          title: cleanTitle,
-          volume: 1,
-          formatType: data.formatType,
-          cover: data.cover || (data.isbn ? `https://covers.openlibrary.org/b/isbn/${data.isbn}-L.jpg?default=false` : undefined),
-          prices: [
-            {
-              store: "Księgarnia",
-              formatType: data.formatType,
-              format: data.formatType === "hardcover" ? "Twarda oprawa" : "Miękka oprawa",
-              price: "39,90 zł",
-              shipping: "Dostępne",
-              isBest: true,
-              url: "https://www.swiatksiazki.pl",
-            },
-          ],
-          editions: [newEdition],
-        };
-
-        return [
-          ...prev,
-          {
-            seriesId: newSeriesId,
-            seriesName: targetSeriesName,
-            author: data.author,
-            books: [newBook],
-          },
-        ];
-      }
-    });
-
-    // Auto mark as owned / reading status if user is active
+  const handleAddBook = (data: AddBookData) => {
+    if (!shelfLoaded || !data.title.trim() || !data.author.trim()) return;
+    const result = addBookToCatalog(seriesRef.current, data);
+    setSeriesList(result.seriesList);
     if (currentUser) {
-      handleToggleOwned(targetBookId, newEditionId);
-      if (data.readingStatus) {
-        handleUpdateReadingStatus(targetBookId, data.readingStatus);
-      }
+      mutationVersion.current++;
+      setCurrentUser(prev => {
+        if (!prev) return prev;
+        const readingStatus = { ...prev.readingStatus };
+        if (data.readingStatus && data.readingStatus !== 'unread') readingStatus[result.bookId] = data.readingStatus;
+        const ownedBooks = { ...prev.ownedBooks };
+        if (data.readingStatus !== 'wishlist') ownedBooks[result.bookId] = result.editionId;
+        return { ...prev, ownedBooks, readingStatus };
+      });
+      if (data.readingStatus !== 'wishlist') void saveUserBookToCloud(currentUser.id, result.bookId, result.editionId).then(reportSync);
     }
   };
 
   const handleImportAuthorBibliography = async (authorName: string) => {
+    if (!shelfLoaded) return;
     setLoadingAuthorBio(authorName);
     try {
       const res = await fetch(`/api/books/search?author=${encodeURIComponent(authorName)}&limit=30`);
-      if (!res.ok) return;
+      if (!res.ok) throw new Error("Nie udało się pobrać książek. / Could not fetch books.");
       const json = await res.json();
+      if (!mounted.current) return;
       const booksToAdd = json.data || [];
 
       if (booksToAdd.length === 0) return;
 
-      setSeriesList((prev) => {
-        const authorLower = authorName.toLowerCase().trim();
-        const existingSeries = prev.find(
-          (s) => s.author.toLowerCase().trim() === authorLower
-        );
-
-        const targetSeriesName = existingSeries?.seriesName || `Dzieła i powieści (${authorName})`;
-        const targetSeriesId =
-          existingSeries?.seriesId ||
-          `series-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
-
-        // Map existing books by canonical work key
-        const existingBooks = existingSeries ? [...existingSeries.books] : [];
-        const canonicalBookMap = new Map<string, Book>();
-        existingBooks.forEach((b) => {
-          const key = canonicalizeBookTitle(b.title);
-          if (key) canonicalBookMap.set(key, b);
-        });
-
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        booksToAdd.forEach((b: any) => {
-          const cleanedTitle = cleanDisplayTitle(b.title);
-          const workKey = canonicalizeBookTitle(cleanedTitle);
-          if (!workKey) return;
-
-          const existingBook = canonicalBookMap.get(workKey);
-          const newEditionId = `ed-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
-          const edition: BookEdition = {
-            id: newEditionId,
-            formatType: b.formatType || "paperback",
-            publisher: b.publisher || "Wydawnictwo",
-            year: b.publicationYear || new Date().getFullYear(),
-            format: b.formatType === "hardcover" ? "Oprawa twarda" : "Oprawa miękka",
-            isbn: b.isbn || "9780000000000",
-          };
-
-          if (existingBook) {
-            // MERGE AS EDITION INTO EXISTING BOOK!
-            const editionExists = existingBook.editions.some(
-              (ed) => (b.isbn && ed.isbn === b.isbn) || (ed.formatType === b.formatType && ed.publisher === b.publisher)
-            );
-            if (!editionExists) {
-              existingBook.editions.push(edition);
-            }
-            if (!existingBook.cover && b.coverUrl) {
-              existingBook.cover = b.coverUrl;
-            }
-          } else {
-            // NEW BOOK CARD
-            const newBookId = `book-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
-            const newBook: Book = {
-              id: newBookId,
-              title: cleanedTitle,
-              volume: canonicalBookMap.size + 1,
-              formatType: b.formatType || "paperback",
-              cover: b.coverUrl,
-              prices: [
-                {
-                  store: "Księgarnia",
-                  formatType: b.formatType || "paperback",
-                  format: b.formatType === "hardcover" ? "Twarda oprawa" : "Miękka oprawa",
-                  price: "29,90 zł",
-                  shipping: "Dostępne",
-                  isBest: true,
-                  url: "https://www.swiatksiazki.pl",
-                },
-              ],
-              editions: [edition],
-            };
-            canonicalBookMap.set(workKey, newBook);
-          }
-        });
-
-        const finalBooks = Array.from(canonicalBookMap.values()).map((b, idx) => ({
-          ...b,
-          volume: idx + 1,
-        }));
-
-        if (existingSeries) {
-          return prev.map((s) =>
-            s.seriesId === existingSeries.seriesId
-              ? { ...s, books: finalBooks }
-              : s
-          );
-        } else {
-          return [
-            ...prev,
-            {
-              seriesId: targetSeriesId,
-              seriesName: targetSeriesName,
-              author: authorName,
-              books: finalBooks,
-            },
-          ];
-        }
-      });
+      let next = seriesRef.current;
+      for (const book of booksToAdd as UnifiedBookMetadata[]) {
+        const author = book.author || authorName;
+        const existing = next.find(s => s.author.toLowerCase().trim() === author.toLowerCase().trim()
+          && s.books.some(b => canonicalizeBookTitle(b.title) === canonicalizeBookTitle(book.title)));
+        next = addBookToCatalog(next, {
+          title: book.title, author, series: existing?.seriesName || `Twórczość: ${author}`,
+          formatType: book.formatType, isbn: book.isbn, cover: book.coverUrl,
+          publisher: book.publisher, publicationYear: book.publicationYear,
+        }).seriesList;
+      }
+      setSeriesList(next);
     } catch (err) {
-      console.error("Error importing author bibliography:", err);
+      if (mounted.current) setStorageError(err instanceof Error ? err.message : "Import failed");
     } finally {
       setLoadingAuthorBio(null);
     }
@@ -728,14 +407,15 @@ export default function Home() {
         onToggleLang={handleToggleLang}
         currentUser={currentUser}
         onOpenAuth={() => setIsAuthOpen(true)}
-        onLogout={() => setCurrentUser(null)}
-        onOpenAddBook={() => setIsAddBookOpen(true)}
+        onLogout={() => { void logout(); }}
+        onOpenAddBook={() => { setScannedIsbn(""); setIsAddBookOpen(true); }}
         onOpenScanner={() => setIsScannerOpen(true)}
         onOpenAuthorSearch={() => setIsAuthorSearchOpen(true)}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
       />
 
+      {(storageError || error) && <p role="alert" className="p-4 text-amber-300">{storageError || error}</p>}
       {/* User Banner */}
       <UserBanner
         currentUser={currentUser}
@@ -928,7 +608,7 @@ export default function Home() {
 
         {activeTab === "missing" && (
           <MissingRadar
-            seriesList={seriesList}
+            seriesList={filteredSeries}
             currentUser={currentUser}
             formatFilter={formatFilter}
             lang={lang}
@@ -1001,8 +681,8 @@ export default function Home() {
                     authorName={group.authorName}
                     seriesList={group.series}
                     currentUser={currentUser}
-                    formatFilter="all"
-                    statusFilter="all"
+                    formatFilter={formatFilter}
+                    statusFilter={statusFilter}
                     lang={lang}
                     showHidden={showHidden}
                     collapsedSeriesIds={collapsedSeriesIds}
@@ -1046,9 +726,11 @@ export default function Home() {
       )}
 
       {/* Author Bibliography Modal */}
-      {activeAuthorName && authorsDatabase[activeAuthorName] && (
+      {activeAuthorName && (
         <AuthorModal
-          author={authorsDatabase[activeAuthorName]}
+          author={{ ...authorsDatabase[activeAuthorName], name: activeAuthorName,
+            bio: authorsDatabase[activeAuthorName]?.bio || '',
+            series: seriesList.filter(s => s.author === activeAuthorName).map(s => ({ name: s.seriesName, seriesId: s.seriesId, bookIds: s.books.map(b => b.id) })) }}
           seriesList={seriesList}
           currentUser={currentUser}
           lang={lang}
@@ -1060,6 +742,7 @@ export default function Home() {
       {/* Add Book Modal */}
       {isAddBookOpen && (
         <AddBookModal
+          initialIsbn={scannedIsbn}
           lang={lang}
           onClose={() => setIsAddBookOpen(false)}
           onAddBook={handleAddBook}
@@ -1084,19 +767,7 @@ export default function Home() {
         <AuthModal
           lang={lang}
           onClose={() => setIsAuthOpen(false)}
-          onLogin={(name, email) => {
-            const id = `user-${email.replace(/[^a-zA-Z0-9]/g, "_")}`;
-            const user: UserAccount = {
-              id,
-              name,
-              email,
-              role: lang === "pl" ? "Kolekcjoner" : "Collector",
-              avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(name)}`,
-              ownedBooks: {},
-            };
-            setCurrentUser(user);
-            setIsAuthOpen(false);
-          }}
+          onLogin={user => { setCurrentUser(user); setIsAuthOpen(false); }}
           isForcedModal={!currentUser}
         />
       )}
@@ -1106,31 +777,10 @@ export default function Home() {
         <BarcodeScannerModal
           lang={lang}
           onClose={() => setIsScannerOpen(false)}
-          onDetected={(scannedIsbn) => {
+          onDetected={(isbn) => {
             setIsScannerOpen(false);
-            // Open AddBookModal with pre-queried or pre-filled ISBN
+            setScannedIsbn(isbn);
             setIsAddBookOpen(true);
-            setTimeout(() => {
-              // Also trigger lookup endpoint to automatically inject new volume
-              fetch(`/api/books/lookup?isbn=${encodeURIComponent(scannedIsbn)}`)
-                .then((r) => r.json())
-                .then((json) => {
-                  if (json && json.data) {
-                    const b = json.data;
-                    handleAddBook({
-                      title: b.title || `ISBN ${scannedIsbn}`,
-                      author: b.author || "Nieznany autor",
-                      series: lang === "pl" ? "Zeskanowane książki" : "Scanned books",
-                      formatType: b.formatType || "hardcover",
-                      isbn: scannedIsbn,
-                    });
-                    setIsAddBookOpen(false);
-                  }
-                })
-                .catch(() => {
-                  // Fallback: AddBookModal stays open for manual completion
-                });
-            }, 200);
           }}
         />
       )}

@@ -46,18 +46,24 @@ ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.user_books ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.custom_books ENABLE ROW LEVEL SECURITY;
 
--- 5. Policies for user data isolation
-CREATE POLICY "Public profiles are viewable by everyone" 
-  ON public.profiles FOR SELECT USING (true);
+-- 5. Policies: rerunnable for existing installations as well as fresh databases.
+DROP POLICY IF EXISTS "Public profiles are viewable by everyone" ON public.profiles;
+DROP POLICY IF EXISTS "Users can read their own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Users can insert their own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Users can update their own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Users can manage their own shelf books" ON public.user_books;
+DROP POLICY IF EXISTS "Users can manage custom books" ON public.custom_books;
 
-CREATE POLICY "Users can insert their own profile" 
-  ON public.profiles FOR INSERT WITH CHECK (auth.uid() = id);
-
-CREATE POLICY "Users can update their own profile" 
-  ON public.profiles FOR UPDATE USING (auth.uid() = id);
-
-CREATE POLICY "Users can manage their own shelf books" 
-  ON public.user_books FOR ALL USING (auth.uid()::text = user_id OR user_id LIKE 'user-%');
-
-CREATE POLICY "Users can manage custom books" 
-  ON public.custom_books FOR ALL USING (auth.uid()::text = user_id OR user_id LIKE 'user-%');
+CREATE POLICY "Users can read their own profile"
+  ON public.profiles FOR SELECT TO authenticated USING (auth.uid() = id);
+CREATE POLICY "Users can insert their own profile"
+  ON public.profiles FOR INSERT TO authenticated WITH CHECK (auth.uid() = id);
+CREATE POLICY "Users can update their own profile"
+  ON public.profiles FOR UPDATE TO authenticated
+  USING (auth.uid() = id) WITH CHECK (auth.uid() = id);
+CREATE POLICY "Users can manage their own shelf books"
+  ON public.user_books FOR ALL TO authenticated
+  USING (auth.uid()::text = user_id) WITH CHECK (auth.uid()::text = user_id);
+CREATE POLICY "Users can manage custom books"
+  ON public.custom_books FOR ALL TO authenticated
+  USING (auth.uid()::text = user_id) WITH CHECK (auth.uid()::text = user_id);

@@ -35,8 +35,8 @@ export const UserBanner: React.FC<UserBannerProps> = ({
           >
             {currentUser
               ? lang === "pl"
-                ? "☁️ Synchronizacja z chmurą"
-                : "☁️ Cloud Synced"
+                ? "Zapis lokalny kolekcji"
+                : "Collection stored locally"
               : lang === "pl"
               ? "🔒 Wymagane logowanie"
               : "🔒 Login required"}
@@ -53,7 +53,7 @@ export const UserBanner: React.FC<UserBannerProps> = ({
             </button>
           ) : (
             <span className="text-gray-400 text-xs">
-              {lang === "pl" ? "Wszystkie zmiany zapisują się na Twoim koncie" : "All changes saved to your account"}
+              {lang === "pl" ? "Katalog i statusy czytania zapisują się w tej przeglądarce" : "Catalog and reading status are stored in this browser"}
             </span>
           )}
         </div>

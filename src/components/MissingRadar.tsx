@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { Series, Book, FormatFilter, Language, UserAccount } from "@/types";
 import { translations } from "@/data/mockData";
 import { calculateSeriesBasket } from "@/lib/pricing/priceEngine";
+import { matchesBookFormat } from "@/lib/library/catalog";
 import { BookCover } from "./BookCover";
 import {
   Target,
@@ -51,7 +52,7 @@ export const MissingRadar: React.FC<MissingRadarProps> = ({
       if (currentUser?.hiddenBooks?.[b.id]) return;
       const isOwned = Boolean(currentUser?.ownedBooks && currentUser.ownedBooks[b.id]);
       if (!isOwned) {
-        if (formatFilter === "all" || b.formatType === formatFilter) {
+        if (matchesBookFormat(b, formatFilter)) {
           missingItems.push({ book: b, series: s });
         }
       }
@@ -122,15 +123,15 @@ export const MissingRadar: React.FC<MissingRadarProps> = ({
               </div>
               <div>
                 <span className="text-[11px] text-gray-400 font-medium block">
-                  {lang === "pl" ? "Najniższy łączny koszt zakupu" : "Cherry-picked lowest total"}
+                  {lang === "pl" ? "Suma cen demo bez dostawy" : "Demo prices excluding delivery"}
                 </span>
                 <p className="text-lg font-bold text-emerald-400 font-mono">
                   {basketOptimization.cheapestCombinedPrice.toFixed(2)} zł
                 </p>
                 <span className="text-[10px] text-emerald-300/80">
                   {lang === "pl"
-                    ? `Łącznie za ${basketOptimization.totalMissingBooks} brakujące tomy`
-                    : `Total for ${basketOptimization.totalMissingBooks} missing volumes`}
+                    ? `Łącznie za ${basketOptimization.pricedBooksCount} z ${basketOptimization.totalMissingBooks} brakujących tomów`
+                    : `Total for ${basketOptimization.pricedBooksCount} of ${basketOptimization.totalMissingBooks} missing volumes`}
                 </span>
               </div>
             </div>
@@ -199,7 +200,8 @@ export const MissingRadar: React.FC<MissingRadarProps> = ({
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {missingItems.map(({ book, series }) => {
-            const bestOffer = book.prices.find((p) => p.isBest) || book.prices[0];
+            const candidate = basketOptimization.breakdown.find(item => item.bookId === book.id)?.bestOffer;
+            const bestOffer = candidate?.inStock ? candidate : undefined;
 
             return (
               <div

@@ -1,3 +1,5 @@
+> Dokument koncepcyjny. Bieżące funkcje i ograniczenia opisuje [README.pl.md](README.pl.md). Podane koszty i limity nie są aktualizowane automatycznie.
+
 # 🛠️ Architektura i Wybór Technologii dla TomeStack
 
 Dokument wyjaśniający wybór stosu technologicznego (Tech Stack) dla pełnej wersji aplikacji **TomeStack**, uwzględniający specyfikę polskiego rynku wydawniczego, wygodę kolekcjonerów oraz koszty utrzymania.
