@@ -5,7 +5,6 @@ export const initialUserAccounts: Record<string, UserAccount> = {};
 export const authorsDatabase: Record<string, Author> = {
   "Andrzej Sapkowski": {
     name: "Andrzej Sapkowski",
-    avatar: "https://images.unsplash.com/photo-1544717305-2782549b5136?w=200&q=80",
     bio: "Polski pisarz fantasy, twórca postaci Geralta z Rivii i kultowej Sagi o Wiedźminie oraz Trylogii Husyckiej.",
     series: [
       {
@@ -27,7 +26,6 @@ export const authorsDatabase: Record<string, Author> = {
   },
   "J.R.R. Tolkien": {
     name: "J.R.R. Tolkien",
-    avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&q=80",
     bio: "Brytyjski filolog i pisarz, autor legendarnego Władcy Pierścieni, Hobbita oraz Silmarillionu.",
     series: [
       {
@@ -39,7 +37,6 @@ export const authorsDatabase: Record<string, Author> = {
   },
   "Frank Herbert": {
     name: "Frank Herbert",
-    avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&q=80",
     bio: "Amerykański pisarz science-fiction, twórca uniwersum Kronik Diuny.",
     series: [
       {
@@ -51,7 +48,6 @@ export const authorsDatabase: Record<string, Author> = {
   },
   "J.K. Rowling": {
     name: "J.K. Rowling",
-    avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&q=80",
     bio: "Brytyjska pisarka, autorka bestsellerowej serii powieści o młodym czarodzieju Harrym Potterze.",
     series: [
       {
@@ -63,7 +59,6 @@ export const authorsDatabase: Record<string, Author> = {
   },
   "George Orwell": {
     name: "George Orwell",
-    avatar: "https://images.unsplash.com/photo-1544717302-de2939b7ef71?w=200&q=80",
     bio: "Jeden z najwybitniejszych i najbardziej proroczych pisarzy XX wieku, twórca antyutopii 'Rok 1984' oraz alegorycznego 'Folwarku zwierzęcego'.",
     series: [
       {

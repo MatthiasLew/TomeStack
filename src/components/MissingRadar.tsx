@@ -180,14 +180,20 @@ export const MissingRadar: React.FC<MissingRadarProps> = ({
       {/* Grid of Missing Books with direct prices */}
       {missingItems.length === 0 ? (
         <div className="card-glass rounded-2xl p-12 text-center text-gray-400 space-y-3">
-          <span className="text-4xl">🏆</span>
+          <span className="text-4xl">{seriesList.length === 0 ? "📚" : "🏆"}</span>
           <h3 className="text-lg font-bold text-white">
-            {lang === "pl" ? "Gratulacje! Brak brakujących tomów!" : "Congratulations! No missing volumes!"}
+            {seriesList.length === 0
+              ? (lang === "pl" ? "Twoja biblioteczka jest pusta" : "Your library is empty")
+              : (lang === "pl" ? "Gratulacje! Brak brakujących tomów!" : "Congratulations! No missing volumes!")}
           </h3>
-          <p className="text-sm">
-            {lang === "pl"
-              ? "Wszystkie tomy w aktualnie obserwowanych seriach znajdują się w Twojej biblioteczce."
-              : "All volumes in your monitored series are in your personal library."}
+          <p className="text-sm max-w-md mx-auto">
+            {seriesList.length === 0
+              ? (lang === "pl"
+                  ? "Dodaj najpierw swoich ulubionych autorów i tomy w zakładce 'Cykle i serie', aby Radar mógł wyszukiwać dla Ciebie brakujące tomy i najniższe ceny."
+                  : "Add authors and books first in the 'Series' tab so Radar can track missing volumes and bookstore prices for you.")
+              : (lang === "pl"
+                  ? "Wszystkie tomy w aktualnie obserwowanych seriach znajdują się w Twojej biblioteczce."
+                  : "All volumes in your monitored series are in your personal library.")}
           </p>
         </div>
       ) : (

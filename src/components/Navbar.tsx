@@ -58,10 +58,25 @@ export const Navbar: React.FC<NavbarProps> = ({
               type="text"
               value={searchQuery}
               onChange={(e) => onSearchChange(e.target.value)}
-              placeholder={t.searchPlaceholder}
-              className="w-full bg-gray-900/90 border border-gray-700/80 rounded-lg pl-10 pr-4 py-2 text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition"
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && searchQuery.trim() && onOpenAuthorSearch) {
+                  onOpenAuthorSearch();
+                }
+              }}
+              placeholder={lang === "pl" ? "Szukaj autora lub tomu (Enter = szukaj online)..." : "Search author or book (Enter = search online)..."}
+              className="w-full bg-gray-900/90 border border-gray-700/80 rounded-lg pl-10 pr-16 py-2 text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition"
             />
             <Search className="w-4 h-4 absolute left-3.5 top-3 text-gray-500" />
+            {searchQuery && onOpenAuthorSearch && (
+              <button
+                type="button"
+                onClick={onOpenAuthorSearch}
+                className="absolute right-2 top-2 px-2 py-0.5 rounded bg-brand-600 hover:bg-brand-500 text-[10px] font-bold text-white transition shadow cursor-pointer"
+                title={lang === "pl" ? "Przeszukaj bazę online (BN & Open Library)" : "Search online"}
+              >
+                Szukaj
+              </button>
+            )}
           </div>
         </div>
 

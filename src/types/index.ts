@@ -50,7 +50,7 @@ export interface AuthorSeriesRef {
 
 export interface Author {
   name: string;
-  avatar: string;
+  avatar?: string;
   bio: string;
   series: AuthorSeriesRef[];
 }

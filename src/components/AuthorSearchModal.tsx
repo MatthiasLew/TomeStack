@@ -95,18 +95,63 @@ export const AuthorSearchModal: React.FC<AuthorSearchModalProps> = ({
     }
   };
 
+  const detectSeriesName = (bookTitle: string, authorName: string): string => {
+    const titleLower = bookTitle.toLowerCase();
+    if (titleLower.includes("wiedźmin") || titleLower.includes("witcher")) {
+      return "Saga o Wiedźminie";
+    }
+    if (titleLower.includes("harry potter")) {
+      return "Harry Potter";
+    }
+    if (titleLower.includes("władca pierścieni") || titleLower.includes("lord of the rings") || titleLower.includes("hobbit")) {
+      return "Śródziemie / Władca Pierścieni";
+    }
+    if (titleLower.includes("diuna") || titleLower.includes("dune")) {
+      return "Kroniki Diuny";
+    }
+    if (titleLower.includes("chyłka") || titleLower.includes("forst")) {
+      return "Seria z Joanną Chyłką / Forst";
+    }
+    if (bookTitle.includes(":") && bookTitle.split(":")[0].length < 30) {
+      return bookTitle.split(":")[0].trim();
+    }
+    return `Dzieła i powieści (${authorName})`;
+  };
+
   const handleAdd = (b: AuthorBookResult, status: ReadingStatus = "unread") => {
+    const author = b.author || searchedAuthor;
+    const seriesName = detectSeriesName(b.title, author);
     const key = `${b.title}-${b.isbn || "no-isbn"}`;
     onAddBookToShelf({
       title: b.title,
-      author: b.author || searchedAuthor,
-      series: b.title.includes(":") ? b.title.split(":")[0].trim() : b.title,
+      author,
+      series: seriesName,
       formatType: b.formatType,
       isbn: b.isbn,
       cover: b.coverUrl,
       readingStatus: status,
     });
     setAddedIds((prev) => new Set(prev).add(key));
+  };
+
+  const handleAddAll = () => {
+    const nextSet = new Set(addedIds);
+    books.forEach((b) => {
+      const author = b.author || searchedAuthor;
+      const seriesName = detectSeriesName(b.title, author);
+      const key = `${b.title}-${b.isbn || "no-isbn"}`;
+      nextSet.add(key);
+      onAddBookToShelf({
+        title: b.title,
+        author,
+        series: seriesName,
+        formatType: b.formatType,
+        isbn: b.isbn,
+        cover: b.coverUrl,
+        readingStatus: "unread",
+      });
+    });
+    setAddedIds(nextSet);
   };
 
   return (
@@ -212,15 +257,23 @@ export const AuthorSearchModal: React.FC<AuthorSearchModalProps> = ({
 
           {!loading && books.length > 0 && (
             <div>
-              <div className="flex items-center justify-between pb-3 mb-4 border-b border-gray-800">
-                <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">
-                  {lang === "pl" ? `Znalezione tomy (${books.length}):` : `Found volumes (${books.length}):`}
-                </span>
-                <span className="text-xs text-brand-400 font-semibold">
-                  {lang === "pl"
-                    ? "Kliknij „Posiadam” lub „Czytam”, aby dodać do swojej biblioteki"
-                    : "Click to add directly to your collection"}
-                </span>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 mb-4 border-b border-gray-800">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">
+                    {lang === "pl" ? `Znalezione tomy (${books.length}):` : `Found volumes (${books.length}):`}
+                  </span>
+                  <span className="text-xs text-brand-400 font-semibold hidden md:inline">
+                    {lang === "pl" ? "Dodaj pojedynczo lub wszystkie naraz" : "Add individually or all at once"}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleAddAll}
+                  className="px-3.5 py-1.5 rounded-lg bg-gradient-to-r from-brand-600 to-amber-600 hover:from-brand-500 hover:to-amber-500 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-md cursor-pointer shrink-0"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>{lang === "pl" ? `Dodaj wszystkie tomy (${books.length}) do biblioteki` : `Add all (${books.length}) to library`}</span>
+                </button>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">

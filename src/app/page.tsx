@@ -39,7 +39,7 @@ export default function Home() {
   const [lang, setLang] = useState<Language>("pl");
   const [currentUser, setCurrentUser] = useState<UserAccount | null>(null);
   const [isAuthLoaded, setIsAuthLoaded] = useState(false);
-  const [seriesList, setSeriesList] = useState<Series[]>(initialSeriesDatabase);
+  const [seriesList, setSeriesList] = useState<Series[]>([]);
 
   // Load user session from localStorage on startup
   React.useEffect(() => {
@@ -69,16 +69,14 @@ export default function Home() {
     }
   }, [currentUser, isAuthLoaded]);
 
-  // Load custom added series from localStorage on startup
+  // Load user's saved books from localStorage on startup
   React.useEffect(() => {
     try {
-      const storedSeries = localStorage.getItem("tomestack_custom_series_v3");
+      const storedSeries = localStorage.getItem("tomestack_user_shelf_v4");
       if (storedSeries) {
         const parsed = JSON.parse(storedSeries);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          const existingIds = new Set(parsed.map((s: Series) => s.seriesId));
-          const missingInitial = initialSeriesDatabase.filter((s) => !existingIds.has(s.seriesId));
-          setSeriesList([...parsed, ...missingInitial]);
+        if (Array.isArray(parsed)) {
+          setSeriesList(parsed);
         }
       }
     } catch {
@@ -86,20 +84,32 @@ export default function Home() {
     }
   }, []);
 
-  // Save seriesList to localStorage whenever user adds new books/authors
+  // Save user's shelf whenever books/authors are added or removed
   React.useEffect(() => {
     try {
-      localStorage.setItem("tomestack_custom_series_v3", JSON.stringify(seriesList));
+      localStorage.setItem("tomestack_user_shelf_v4", JSON.stringify(seriesList));
     } catch {
       // ignore
     }
   }, [seriesList]);
+
+  // Handler to load demo library on user request
+  const handleLoadDemoData = () => {
+    setSeriesList(initialSeriesDatabase);
+  };
+
+  // Handler to clear library back to empty state
+  const handleClearLibrary = () => {
+    setSeriesList([]);
+    localStorage.removeItem("tomestack_user_shelf_v4");
+  };
 
   // Filters & Tabs
   const [formatFilter, setFormatFilter] = useState<FormatFilter>("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [activeTab, setActiveTab] = useState<ActiveTab>("series");
   const [searchQuery, setSearchQuery] = useState("");
+  const [quickAuthorInput, setQuickAuthorInput] = useState("");
 
   // Modals state
   const [activeBookModal, setActiveBookModal] = useState<{
@@ -504,86 +514,190 @@ export default function Home() {
               </div>
             )}
 
-            {authorGroups.length > 0 && (
-              <div className="flex flex-wrap items-center justify-between gap-3 px-1 py-1">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-semibold text-gray-300">
-                    {lang === "pl" ? "Twoja biblioteka (Autor ➔ Cykl ➔ Książki)" : "Your Library (Author ➔ Series ➔ Books)"}
-                  </span>
-                  <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-gray-800 text-gray-300 border border-gray-700">
-                    {authorGroups.length} {lang === "pl" ? "autorów" : "authors"}
-                  </span>
+            {seriesList.length === 0 ? (
+              <div className="card-glass rounded-3xl p-8 sm:p-12 text-center border border-brand-500/30 bg-gradient-to-b from-gray-900/90 via-gray-950/90 to-brand-950/20 shadow-2xl space-y-6 max-w-3xl mx-auto">
+                <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto rounded-2xl bg-brand-500/10 border border-brand-500/30 flex items-center justify-center text-brand-400 shadow-inner">
+                  <Library className="w-8 h-8 sm:w-10 sm:h-10" />
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="space-y-2">
+                  <h3 className="text-2xl sm:text-3xl font-bold font-serif text-white">
+                    {lang === "pl" ? "Twoja biblioteka jest jeszcze pusta" : "Your Library is Empty"}
+                  </h3>
+                  <p className="text-sm sm:text-base text-gray-400 max-w-xl mx-auto leading-relaxed">
+                    {lang === "pl"
+                      ? "Wpisz poniżej nazwisko dowolnego autora na świecie (np. George Orwell, Stanisław Lem, Stephen King), aby wczytać jego tomy z Biblioteki Narodowej i dodać do swojej półki jednym kliknięciem!"
+                      : "Type any author below (e.g. George Orwell, Stanisław Lem, Stephen King) to fetch works from the National Library and add them to your shelf with 1 click!"}
+                  </p>
+                </div>
+
+                {/* Direct quick-search input */}
+                <div className="max-w-md mx-auto flex gap-2">
+                  <input
+                    type="text"
+                    value={quickAuthorInput}
+                    onChange={(e) => setQuickAuthorInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && quickAuthorInput.trim()) {
+                        setAuthorSearchInitialQuery(quickAuthorInput.trim());
+                        setIsAuthorSearchOpen(true);
+                      }
+                    }}
+                    placeholder={lang === "pl" ? "Wpisz autora (np. George Orwell)..." : "Enter author name..."}
+                    className="flex-1 px-4 py-3 rounded-xl bg-gray-900 border border-gray-700 text-white placeholder-gray-500 text-sm focus:outline-none focus:border-brand-500 transition"
+                  />
                   <button
-                    onClick={() => handleCollapseAll(filteredSeries)}
-                    className="px-2.5 py-1.5 rounded-lg text-xs font-medium bg-gray-800/80 hover:bg-gray-700 text-gray-300 hover:text-white border border-gray-700/60 transition flex items-center gap-1.5 shadow-sm"
-                    title={lang === "pl" ? "Zwiń wszystkie cykle" : "Collapse all series"}
+                    onClick={() => {
+                      if (quickAuthorInput.trim()) {
+                        setAuthorSearchInitialQuery(quickAuthorInput.trim());
+                        setIsAuthorSearchOpen(true);
+                      }
+                    }}
+                    className="px-5 py-3 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-sm font-bold transition flex items-center gap-2 shadow-lg shadow-brand-900/40 cursor-pointer shrink-0"
                   >
-                    <FolderMinus className="w-3.5 h-3.5 text-brand-400" />
-                    <span>{lang === "pl" ? "Zwiń wszystkie" : "Collapse all"}</span>
-                  </button>
-                  <button
-                    onClick={handleExpandAll}
-                    className="px-2.5 py-1.5 rounded-lg text-xs font-medium bg-gray-800/80 hover:bg-gray-700 text-gray-300 hover:text-white border border-gray-700/60 transition flex items-center gap-1.5 shadow-sm"
-                    title={lang === "pl" ? "Rozwiń wszystkie cykle" : "Expand all series"}
-                  >
-                    <FolderPlus className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>{lang === "pl" ? "Rozwiń wszystkie" : "Expand all"}</span>
+                    <Search className="w-4 h-4" />
+                    <span>{lang === "pl" ? "Wyszukaj" : "Search"}</span>
                   </button>
                 </div>
-              </div>
-            )}
 
-            {authorGroups.length === 0 ? (
-              <div className="card-glass rounded-2xl p-12 text-center text-gray-400 space-y-4">
-                <p className="text-base font-semibold text-gray-300">
-                  {lang === "pl" ? `Brak pozycji pasujących do "${searchQuery}".` : `No items matching "${searchQuery}".`}
-                </p>
-                <p className="text-xs text-gray-500 max-w-md mx-auto">
-                  {lang === "pl"
-                    ? "Możesz pobrać całą bibliografię tego autora bezpośrednio z zewnętrznej bazy Biblioteki Narodowej i dodać ją do swojej półki."
-                    : "You can load this author's works from the national library database and import them to your shelf."}
-                </p>
-                <button
-                  onClick={() => {
-                    setAuthorSearchInitialQuery(searchQuery.trim());
-                    setIsAuthorSearchOpen(true);
-                  }}
-                  className="px-4 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-bold transition inline-flex items-center gap-2 shadow-lg cursor-pointer"
-                >
-                  <Library className="w-4 h-4" />
-                  <span>{lang === "pl" ? `Pobierz dzieła "${searchQuery}" z API` : `Fetch "${searchQuery}" from API`}</span>
-                </button>
+                {/* Popular author chips */}
+                <div className="pt-2">
+                  <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold mb-2">
+                    {lang === "pl" ? "Szybki start – popularni autorzy:" : "Quick start – popular authors:"}
+                  </p>
+                  <div className="flex flex-wrap justify-center gap-2">
+                    {[
+                      "George Orwell",
+                      "Stanisław Lem",
+                      "Stephen King",
+                      "J.R.R. Tolkien",
+                      "Andrzej Sapkowski",
+                      "Remigiusz Mróz",
+                    ].map((author) => (
+                      <button
+                        key={author}
+                        onClick={() => {
+                          setAuthorSearchInitialQuery(author);
+                          setIsAuthorSearchOpen(true);
+                        }}
+                        className="px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-800/80 hover:bg-brand-600/30 text-gray-300 hover:text-brand-300 border border-gray-700 hover:border-brand-500/50 transition cursor-pointer"
+                      >
+                        ✍️ {author}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="pt-4 border-t border-gray-800/80 flex items-center justify-center gap-4 text-xs text-gray-500">
+                  <span>{lang === "pl" ? "Chcesz zobaczyć przykładowe dane?" : "Want to see sample data?"}</span>
+                  <button
+                    onClick={handleLoadDemoData}
+                    className="text-brand-400 hover:text-brand-300 font-semibold underline underline-offset-4 cursor-pointer"
+                  >
+                    {lang === "pl" ? "Załaduj kolekcję demonstracyjną" : "Load demo collection"}
+                  </button>
+                </div>
               </div>
             ) : (
-              authorGroups.map((group) => (
-                <AuthorSection
-                  key={group.authorName}
-                  authorName={group.authorName}
-                  seriesList={group.series}
-                  currentUser={currentUser}
-                  formatFilter={formatFilter}
-                  statusFilter={statusFilter}
-                  lang={lang}
-                  showHidden={showHidden}
-                  collapsedSeriesIds={collapsedSeriesIds}
-                  onToggleSeriesCollapse={handleToggleSeriesCollapse}
-                  onOpenBookModal={(book, s) =>
-                    setActiveBookModal({ book, series: s })
-                  }
-                  onOpenAuthorModal={(author) => setActiveAuthorName(author)}
-                  onOpenAuthorSearch={(author) => {
-                    setAuthorSearchInitialQuery(author);
-                    setIsAuthorSearchOpen(true);
-                  }}
-                  onToggleOwned={handleToggleOwned}
-                  onUpdateReadingStatus={handleUpdateReadingStatus}
-                  onToggleHideBook={handleToggleHideBook}
-                  onToggleHideSeries={handleToggleHideSeries}
-                />
-              ))
+              <>
+                <div className="flex flex-wrap items-center justify-between gap-3 px-1 py-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-semibold text-gray-300">
+                      {lang === "pl" ? "Twoja biblioteka (Autor ➔ Cykl ➔ Książki)" : "Your Library (Author ➔ Series ➔ Books)"}
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-gray-800 text-gray-300 border border-gray-700">
+                      {authorGroups.length} {lang === "pl" ? "autorów" : "authors"}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => handleCollapseAll(filteredSeries)}
+                      className="px-2.5 py-1.5 rounded-lg text-xs font-medium bg-gray-800/80 hover:bg-gray-700 text-gray-300 hover:text-white border border-gray-700/60 transition flex items-center gap-1.5 shadow-sm cursor-pointer"
+                      title={lang === "pl" ? "Zwiń wszystkie cykle" : "Collapse all series"}
+                    >
+                      <FolderMinus className="w-3.5 h-3.5 text-brand-400" />
+                      <span>{lang === "pl" ? "Zwiń wszystkie" : "Collapse all"}</span>
+                    </button>
+                    <button
+                      onClick={handleExpandAll}
+                      className="px-2.5 py-1.5 rounded-lg text-xs font-medium bg-gray-800/80 hover:bg-gray-700 text-gray-300 hover:text-white border border-gray-700/60 transition flex items-center gap-1.5 shadow-sm cursor-pointer"
+                      title={lang === "pl" ? "Rozwiń wszystkie cykle" : "Expand all series"}
+                    >
+                      <FolderPlus className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>{lang === "pl" ? "Rozwiń wszystkie" : "Expand all"}</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (
+                          confirm(
+                            lang === "pl"
+                              ? "Czy na pewno chcesz wyczyścić całą swoją biblioteczkę do zera?"
+                              : "Are you sure you want to clear your entire library?"
+                          )
+                        ) {
+                          handleClearLibrary();
+                        }
+                      }}
+                      className="px-2.5 py-1.5 rounded-lg text-xs font-medium bg-gray-800/80 hover:bg-rose-950/60 text-gray-400 hover:text-rose-300 border border-gray-700/60 hover:border-rose-800/60 transition flex items-center gap-1.5 shadow-sm cursor-pointer ml-1"
+                      title={lang === "pl" ? "Wyczyść bibliotekę do zera" : "Clear library to empty"}
+                    >
+                      <span>🗑️</span>
+                      <span>{lang === "pl" ? "Wyczyść półkę" : "Clear shelf"}</span>
+                    </button>
+                  </div>
+                </div>
+
+                {authorGroups.length === 0 ? (
+                  <div className="card-glass rounded-2xl p-12 text-center text-gray-400 space-y-4">
+                    <p className="text-base font-semibold text-gray-300">
+                      {lang === "pl" ? `Brak pozycji pasujących do "${searchQuery}".` : `No items matching "${searchQuery}".`}
+                    </p>
+                    <p className="text-xs text-gray-500 max-w-md mx-auto">
+                      {lang === "pl"
+                        ? "Możesz pobrać całą bibliografię tego autora bezpośrednio z bazy online i dodać ją do swojej półki."
+                        : "You can load this author's works from the online catalog and import them to your shelf."}
+                    </p>
+                    <button
+                      onClick={() => {
+                        setAuthorSearchInitialQuery(searchQuery.trim());
+                        setIsAuthorSearchOpen(true);
+                      }}
+                      className="px-4 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-bold transition inline-flex items-center gap-2 shadow-lg cursor-pointer"
+                    >
+                      <Library className="w-4 h-4" />
+                      <span>{lang === "pl" ? `Pobierz dzieła "${searchQuery}" z API` : `Fetch "${searchQuery}" from API`}</span>
+                    </button>
+                  </div>
+                ) : (
+                  authorGroups.map((group) => (
+                    <AuthorSection
+                      key={group.authorName}
+                      authorName={group.authorName}
+                      seriesList={group.series}
+                      currentUser={currentUser}
+                      formatFilter={formatFilter}
+                      statusFilter={statusFilter}
+                      lang={lang}
+                      showHidden={showHidden}
+                      collapsedSeriesIds={collapsedSeriesIds}
+                      onToggleSeriesCollapse={handleToggleSeriesCollapse}
+                      onOpenBookModal={(book, s) =>
+                        setActiveBookModal({ book, series: s })
+                      }
+                      onOpenAuthorModal={(author) => setActiveAuthorName(author)}
+                      onOpenAuthorSearch={(author) => {
+                        setAuthorSearchInitialQuery(author);
+                        setIsAuthorSearchOpen(true);
+                      }}
+                      onToggleOwned={handleToggleOwned}
+                      onUpdateReadingStatus={handleUpdateReadingStatus}
+                      onToggleHideBook={handleToggleHideBook}
+                      onToggleHideSeries={handleToggleHideSeries}
+                    />
+                  ))
+                )}
+              </>
             )}
           </div>
         )}
@@ -604,64 +718,87 @@ export default function Home() {
 
         {activeTab === "all" && (
           <div className="space-y-6">
-            {authorGroups.length > 0 && (
-              <div className="flex flex-wrap items-center justify-between gap-3 px-1 py-1">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-semibold text-gray-300">
-                    {lang === "pl" ? "Wszystkie tomy (Autor ➔ Cykl ➔ Książki)" : "All Volumes (Author ➔ Series ➔ Books)"}
-                  </span>
-                  <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-gray-800 text-gray-300 border border-gray-700">
-                    {authorGroups.length} {lang === "pl" ? "autorów" : "authors"}
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => handleCollapseAll(filteredSeries)}
-                    className="px-2.5 py-1.5 rounded-lg text-xs font-medium bg-gray-800/80 hover:bg-gray-700 text-gray-300 hover:text-white border border-gray-700/60 transition flex items-center gap-1.5 shadow-sm"
-                    title={lang === "pl" ? "Zwiń wszystkie cykle" : "Collapse all series"}
-                  >
-                    <FolderMinus className="w-3.5 h-3.5 text-brand-400" />
-                    <span>{lang === "pl" ? "Zwiń wszystkie" : "Collapse all"}</span>
-                  </button>
-                  <button
-                    onClick={handleExpandAll}
-                    className="px-2.5 py-1.5 rounded-lg text-xs font-medium bg-gray-800/80 hover:bg-gray-700 text-gray-300 hover:text-white border border-gray-700/60 transition flex items-center gap-1.5 shadow-sm"
-                    title={lang === "pl" ? "Rozwiń wszystkie cykle" : "Expand all series"}
-                  >
-                    <FolderPlus className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>{lang === "pl" ? "Rozwiń wszystkie" : "Expand all"}</span>
-                  </button>
-                </div>
+            {seriesList.length === 0 ? (
+              <div className="card-glass rounded-2xl p-12 text-center text-gray-400 space-y-4">
+                <span className="text-4xl">📚</span>
+                <h3 className="text-lg font-bold text-white">
+                  {lang === "pl" ? "Twoja biblioteczka jest pusta" : "Your library is empty"}
+                </h3>
+                <p className="text-xs text-gray-400 max-w-md mx-auto">
+                  {lang === "pl"
+                    ? "Wyszukaj i dodaj książki swoich ulubionych pisarzy, aby wyświetlać je na liście."
+                    : "Search and add books from your favorite authors to view them here."}
+                </p>
+                <button
+                  onClick={() => setIsAuthorSearchOpen(true)}
+                  className="px-4 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-bold transition inline-flex items-center gap-2 shadow-lg cursor-pointer"
+                >
+                  <Library className="w-4 h-4" />
+                  <span>{lang === "pl" ? "Wyszukaj autora i dodaj książki" : "Search author and import books"}</span>
+                </button>
               </div>
-            )}
+            ) : (
+              <>
+                {authorGroups.length > 0 && (
+                  <div className="flex flex-wrap items-center justify-between gap-3 px-1 py-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-semibold text-gray-300">
+                        {lang === "pl" ? "Wszystkie tomy (Autor ➔ Cykl ➔ Książki)" : "All Volumes (Author ➔ Series ➔ Books)"}
+                      </span>
+                      <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-gray-800 text-gray-300 border border-gray-700">
+                        {authorGroups.length} {lang === "pl" ? "autorów" : "authors"}
+                      </span>
+                    </div>
 
-            {authorGroups.map((group) => (
-              <AuthorSection
-                key={group.authorName}
-                authorName={group.authorName}
-                seriesList={group.series}
-                currentUser={currentUser}
-                formatFilter="all"
-                statusFilter="all"
-                lang={lang}
-                showHidden={showHidden}
-                collapsedSeriesIds={collapsedSeriesIds}
-                onToggleSeriesCollapse={handleToggleSeriesCollapse}
-                onOpenBookModal={(book, s) =>
-                  setActiveBookModal({ book, series: s })
-                }
-                onOpenAuthorModal={(author) => setActiveAuthorName(author)}
-                onOpenAuthorSearch={(author) => {
-                  setAuthorSearchInitialQuery(author);
-                  setIsAuthorSearchOpen(true);
-                }}
-                onToggleOwned={handleToggleOwned}
-                onUpdateReadingStatus={handleUpdateReadingStatus}
-                onToggleHideBook={handleToggleHideBook}
-                onToggleHideSeries={handleToggleHideSeries}
-              />
-            ))}
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleCollapseAll(filteredSeries)}
+                        className="px-2.5 py-1.5 rounded-lg text-xs font-medium bg-gray-800/80 hover:bg-gray-700 text-gray-300 hover:text-white border border-gray-700/60 transition flex items-center gap-1.5 shadow-sm cursor-pointer"
+                        title={lang === "pl" ? "Zwiń wszystkie cykle" : "Collapse all series"}
+                      >
+                        <FolderMinus className="w-3.5 h-3.5 text-brand-400" />
+                        <span>{lang === "pl" ? "Zwiń wszystkie" : "Collapse all"}</span>
+                      </button>
+                      <button
+                        onClick={handleExpandAll}
+                        className="px-2.5 py-1.5 rounded-lg text-xs font-medium bg-gray-800/80 hover:bg-gray-700 text-gray-300 hover:text-white border border-gray-700/60 transition flex items-center gap-1.5 shadow-sm cursor-pointer"
+                        title={lang === "pl" ? "Rozwiń wszystkie cykle" : "Expand all series"}
+                      >
+                        <FolderPlus className="w-3.5 h-3.5 text-emerald-400" />
+                        <span>{lang === "pl" ? "Rozwiń wszystkie" : "Expand all"}</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {authorGroups.map((group) => (
+                  <AuthorSection
+                    key={group.authorName}
+                    authorName={group.authorName}
+                    seriesList={group.series}
+                    currentUser={currentUser}
+                    formatFilter="all"
+                    statusFilter="all"
+                    lang={lang}
+                    showHidden={showHidden}
+                    collapsedSeriesIds={collapsedSeriesIds}
+                    onToggleSeriesCollapse={handleToggleSeriesCollapse}
+                    onOpenBookModal={(book, s) =>
+                      setActiveBookModal({ book, series: s })
+                    }
+                    onOpenAuthorModal={(author) => setActiveAuthorName(author)}
+                    onOpenAuthorSearch={(author) => {
+                      setAuthorSearchInitialQuery(author);
+                      setIsAuthorSearchOpen(true);
+                    }}
+                    onToggleOwned={handleToggleOwned}
+                    onUpdateReadingStatus={handleUpdateReadingStatus}
+                    onToggleHideBook={handleToggleHideBook}
+                    onToggleHideSeries={handleToggleHideSeries}
+                  />
+                ))}
+              </>
+            )}
           </div>
         )}
       </main>

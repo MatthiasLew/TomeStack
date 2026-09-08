@@ -46,12 +46,24 @@ export const AuthorModal: React.FC<AuthorModalProps> = ({
         {/* Author Header */}
         <div className="p-6 border-b border-gray-800 flex items-center justify-between bg-gradient-to-r from-gray-950 to-gray-900">
           <div className="flex items-center gap-4">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={author.avatar}
-              alt={author.name}
-              className="w-16 h-16 rounded-full object-cover border-2 border-brand-500 shadow-md"
-            />
+            {author.avatar ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={author.avatar}
+                alt={author.name}
+                className="w-16 h-16 rounded-full object-cover border-2 border-brand-500 shadow-md"
+              />
+            ) : (
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-brand-700 via-brand-900 to-gray-950 border border-brand-500/40 flex items-center justify-center text-xl font-bold font-serif text-brand-200 shadow-lg tracking-wider shrink-0">
+                {author.name
+                  .split(" ")
+                  .map((n) => n[0])
+                  .filter(Boolean)
+                  .slice(0, 2)
+                  .join("")
+                  .toUpperCase()}
+              </div>
+            )}
             <div>
               <span className="text-xs font-semibold px-2 py-0.5 rounded bg-brand-500/20 text-brand-400 uppercase tracking-wider">
                 Autor / Author

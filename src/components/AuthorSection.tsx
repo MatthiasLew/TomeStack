@@ -69,18 +69,15 @@ export const AuthorSection: React.FC<AuthorSectionProps> = ({
       {/* Level 1: Author Header Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-gray-800/80">
         <div className="flex items-center gap-3.5">
-          {authorData?.avatar ? (
-            /* eslint-disable-next-line @next/next/no-img-element */
-            <img
-              src={authorData.avatar}
-              alt={authorName}
-              className="w-13 h-13 rounded-2xl object-cover border-2 border-brand-500/40 shadow-md"
-            />
-          ) : (
-            <div className="w-13 h-13 rounded-2xl bg-gradient-to-tr from-brand-600 to-amber-600 flex items-center justify-center text-white font-bold text-lg shadow-lg border border-brand-400/30">
-              {authorName.substring(0, 1)}
-            </div>
-          )}
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-brand-700/80 via-gray-800 to-amber-700/40 border border-brand-500/30 flex items-center justify-center text-white font-serif font-bold text-lg shadow-lg shrink-0">
+            {authorName
+              .split(" ")
+              .map((n) => n[0])
+              .filter(Boolean)
+              .slice(0, 2)
+              .join("")
+              .toUpperCase()}
+          </div>
 
           <div>
             <div className="flex flex-wrap items-center gap-2">
