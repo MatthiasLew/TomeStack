@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
-import { BindingFormat, Language } from "@/types";
+import React, { useState, useEffect } from "react";
+import { BindingFormat, Language, ReadingStatus } from "@/types";
 import { X, BookOpen, Search, Loader2, Camera } from "lucide-react";
 import { BarcodeScannerModal } from "./BarcodeScannerModal";
 
@@ -18,6 +18,7 @@ interface AddBookModalProps {
     cover?: string;
     publisher?: string;
     publicationYear?: number;
+    readingStatus?: ReadingStatus;
   }) => void;
 }
 
@@ -31,9 +32,22 @@ export const AddBookModal: React.FC<AddBookModalProps> = ({
   const [author, setAuthor] = useState("");
   const [series, setSeries] = useState("");
   const [formatType, setFormatType] = useState<BindingFormat>("hardcover");
+  const [readingStatus, setReadingStatus] = useState<ReadingStatus>("unread");
   const [isbn, setIsbn] = useState(initialIsbn);
   const [metadata, setMetadata] = useState<{ cover?: string; publisher?: string; publicationYear?: number }>({});
   const [showScanner, setShowScanner] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        if (showScanner) setShowScanner(false);
+        else onClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose, showScanner]);
 
   // Multi-Provider Book Fetch State
   const [isLoadingLookup, setIsLoadingLookup] = useState(false);
@@ -143,21 +157,34 @@ export const AddBookModal: React.FC<AddBookModalProps> = ({
       series: series || (lang === "pl" ? "Książki samodzielne" : "Standalone"),
       formatType,
       isbn,
+      readingStatus,
     });
     onClose();
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-gray-900 border border-gray-700 w-full max-w-md rounded-2xl overflow-y-auto max-h-[92vh] shadow-2xl p-6">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="add-book-title"
+        className="bg-gray-900 border border-gray-700 w-full max-w-md rounded-2xl overflow-y-auto max-h-[92vh] shadow-2xl p-6"
+      >
         <div className="flex items-center justify-between pb-3 border-b border-gray-800">
           <div className="flex items-center gap-2">
             <BookOpen className="w-5 h-5 text-brand-400" />
-            <h3 className="text-lg font-bold text-white">
+            <h3 id="add-book-title" className="text-lg font-bold text-white">
               {lang === "pl" ? "Dodaj nową książkę" : "Add new book"}
             </h3>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-white p-1">
+          <button
+            onClick={onClose}
+            aria-label={lang === "pl" ? "Zamknij" : "Close"}
+            className="text-gray-400 hover:text-white p-1 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 cursor-pointer"
+          >
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -276,18 +303,36 @@ export const AddBookModal: React.FC<AddBookModalProps> = ({
             />
           </div>
 
-          <div>
-            <label className="text-xs text-gray-400 block mb-1">
-              {lang === "pl" ? "Typ oprawy" : "Binding format"}
-            </label>
-            <select
-              value={formatType}
-              onChange={(e) => setFormatType(e.target.value as BindingFormat)}
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg p-2.5 text-sm text-white focus:outline-none focus:border-brand-500"
-            >
-              <option value="hardcover">📖 Twarda oprawa (Hardcover)</option>
-              <option value="paperback">📕 Miękka oprawa (Paperback)</option>
-            </select>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs text-gray-400 block mb-1">
+                {lang === "pl" ? "Typ oprawy" : "Binding format"}
+              </label>
+              <select
+                value={formatType}
+                onChange={(e) => setFormatType(e.target.value as BindingFormat)}
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg p-2.5 text-sm text-white focus:outline-none focus:border-brand-500"
+              >
+                <option value="hardcover">📖 Twarda oprawa (Hardcover)</option>
+                <option value="paperback">📕 Miękka oprawa (Paperback)</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="text-xs text-gray-400 block mb-1">
+                {lang === "pl" ? "Status pozycji" : "Reading status"}
+              </label>
+              <select
+                value={readingStatus}
+                onChange={(e) => setReadingStatus(e.target.value as ReadingStatus)}
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg p-2.5 text-sm text-white focus:outline-none focus:border-brand-500"
+              >
+                <option value="unread">{lang === "pl" ? "Nieprzeczytana" : "Unread"}</option>
+                <option value="reading">{lang === "pl" ? "📖 W trakcie czytania" : "📖 Currently reading"}</option>
+                <option value="read">{lang === "pl" ? "✓ Przeczytana" : "✓ Read"}</option>
+                <option value="wishlist">{lang === "pl" ? "⭐ Lista życzeń (Wishlist)" : "⭐ Wishlist"}</option>
+              </select>
+            </div>
           </div>
 
           <div className="flex justify-end gap-2 pt-2 border-t border-gray-800">

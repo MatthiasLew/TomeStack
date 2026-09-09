@@ -84,7 +84,18 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
       setSelectedCameraId(camera?.id || null);
       startScanning(camera?.id);
     }).catch(() => { if (version === generation.current) startScanning(); });
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    if (typeof window !== "undefined") {
+      window.addEventListener("keydown", handleKeyDown);
+    }
+
     return () => {
+      if (typeof window !== "undefined") {
+        window.removeEventListener("keydown", handleKeyDown);
+      }
       generation.current = version + 1;
       if (timer.current) clearTimeout(timer.current);
       queue.current = queue.current.catch(() => {}).then(async () => {
@@ -95,7 +106,7 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
         scannerRef.current = null;
       }).catch(() => {});
     };
-  }, [startScanning]);
+  }, [startScanning, onClose]);
 
   const handleSwitchCamera = (id: string) => {
     if (detected.current) return;
@@ -104,8 +115,16 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="bg-gray-900 border border-gray-700 w-full max-w-lg rounded-2xl overflow-hidden shadow-2xl flex flex-col">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="barcode-modal-title"
+        className="bg-gray-900 border border-gray-700 w-full max-w-lg rounded-2xl overflow-hidden shadow-2xl flex flex-col"
+      >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-800 bg-gray-900/80">
           <div className="flex items-center gap-2.5">
@@ -113,7 +132,7 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
               <Camera className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-white flex items-center gap-2">
+              <h3 id="barcode-modal-title" className="text-base font-bold text-white flex items-center gap-2">
                 <span>{lang === "pl" ? "Skaner Kodów Kreskowych ISBN" : "ISBN Barcode Scanner"}</span>
                 <span className="text-[10px] uppercase font-semibold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
                   <Zap className="w-2.5 h-2.5" /> Live Camera
@@ -128,7 +147,8 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
           </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-white p-2 rounded-lg hover:bg-gray-800 transition"
+            aria-label={lang === "pl" ? "Zamknij" : "Close"}
+            className="text-gray-400 hover:text-white p-2 rounded-lg hover:bg-gray-800 transition focus:outline-none focus:ring-2 focus:ring-brand-500 cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>

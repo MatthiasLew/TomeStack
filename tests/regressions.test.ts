@@ -66,3 +66,10 @@ test('curated fallback does not present hardcoded ISBNs or covers as verified ed
     assert.equal(book.publisher, undefined);
   }
 });
+test('shelfSync handles local and unconfigured environments gracefully', async () => {
+  const { loadUserShelfFromCloud, saveUserBookToCloud, saveUserReadingStatusToCloud, flushSyncQueue } = await import('../src/lib/supabase/shelfSync');
+  assert.equal(await loadUserShelfFromCloud('local-test'), null);
+  assert.equal(await saveUserBookToCloud('local-test', 'book-1', 'ed-1'), false);
+  assert.equal(await saveUserReadingStatusToCloud('local-test', 'book-1', 'reading'), false);
+  assert.equal(await flushSyncQueue('local-test'), 0);
+});

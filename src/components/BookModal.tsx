@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Book, Series, FormatFilter, Language, UserAccount, ReadingStatus } from "@/types";
 import { translations } from "@/data/mockData";
 import { X, Check, ShoppingBag, BookOpen, BookmarkCheck, Eye, EyeOff } from "lucide-react";
@@ -34,6 +34,15 @@ export const BookModal: React.FC<BookModalProps> = ({
   const t = translations[lang];
   const [modalFormat, setModalFormat] = useState<FormatFilter>("all");
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
   const isOwned = Boolean(currentUser?.ownedBooks && currentUser.ownedBooks[book.id]);
   const isHidden = Boolean(currentUser?.hiddenBooks?.[book.id]);
   const userEditionId = currentUser?.ownedBooks?.[book.id];
@@ -51,8 +60,16 @@ export const BookModal: React.FC<BookModalProps> = ({
   });
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-gray-900 border border-gray-700 w-full max-w-3xl rounded-2xl overflow-hidden shadow-2xl flex flex-col max-h-[92vh]">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="book-modal-title"
+        className="bg-gray-900 border border-gray-700 w-full max-w-3xl rounded-2xl overflow-hidden shadow-2xl flex flex-col max-h-[92vh]"
+      >
         {/* Modal Header */}
         <div className="p-5 sm:p-6 border-b border-gray-800 flex items-start justify-between bg-gray-950/70">
           <div className="flex gap-4">
@@ -68,7 +85,7 @@ export const BookModal: React.FC<BookModalProps> = ({
               <span className="text-xs font-semibold px-2 py-0.5 rounded bg-brand-500/20 text-brand-400">
                 {series.seriesName} #{book.volume}
               </span>
-              <h2 className="text-xl sm:text-2xl font-serif font-bold text-white mt-1">
+              <h2 id="book-modal-title" className="text-xl sm:text-2xl font-serif font-bold text-white mt-1">
                 {book.title}
               </h2>
               <p className="text-sm text-gray-400 font-medium">
@@ -106,7 +123,8 @@ export const BookModal: React.FC<BookModalProps> = ({
           </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-white p-1 rounded-lg hover:bg-gray-800 transition"
+            aria-label={lang === "pl" ? "Zamknij" : "Close"}
+            className="text-gray-400 hover:text-white p-1 rounded-lg hover:bg-gray-800 transition focus:outline-none focus:ring-2 focus:ring-brand-500 cursor-pointer"
           >
             <X className="w-6 h-6" />
           </button>
