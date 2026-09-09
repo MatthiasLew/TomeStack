@@ -43,12 +43,59 @@ import {
 } from "@/lib/supabase/shelfSync";
 
 import { useAccount, shelfKey } from "@/hooks/useAccount";
-import { addBookToCatalog, AddBookData } from "@/lib/library/catalog";
+import { addBookToCatalog, AddBookData, sanitizeAuthor } from "@/lib/library/catalog";
 import { supabase } from "@/lib/supabase/client";
 
-// Preserve book and edition IDs referenced by saved user state.
+function normalizeSeriesName(seriesName: string, cleanAuthor: string): string {
+  if (/^dzieła i powieści/i.test(seriesName)) {
+    return `Dzieła i powieści (${cleanAuthor})`;
+  }
+  if (/^twórczość:/i.test(seriesName)) {
+    return `Twórczość: ${cleanAuthor}`;
+  }
+  return seriesName;
+}
+
+// Preserve book and edition IDs referenced by saved user state, while merging duplicates
 function consolidateSeriesList(list: Series[]): Series[] {
-  return list.map(series => ({ ...series, books: series.books.map(book => ({ ...book, title: cleanDisplayTitle(book.title) })) }));
+  const mergedMap = new Map<string, Series>();
+
+  for (const series of list) {
+    const cleanAuthor = sanitizeAuthor(series.author) || "Nieznany autor";
+    const cleanSeries = normalizeSeriesName(series.seriesName, cleanAuthor);
+    const key = `${cleanAuthor.toLowerCase()}::${cleanSeries.toLowerCase()}`;
+
+    const cleanedBooks: Book[] = series.books.map(book => ({
+      ...book,
+      title: cleanDisplayTitle(book.title),
+    }));
+
+    if (!mergedMap.has(key)) {
+      mergedMap.set(key, {
+        ...series,
+        author: cleanAuthor,
+        seriesName: cleanSeries,
+        books: cleanedBooks,
+      });
+    } else {
+      const existing = mergedMap.get(key)!;
+      for (const b of cleanedBooks) {
+        const existingBook = existing.books.find(eb => canonicalizeBookTitle(eb.title) === canonicalizeBookTitle(b.title));
+        if (!existingBook) {
+          existing.books.push(b);
+        } else {
+          for (const ed of b.editions) {
+            if (!existingBook.editions.some(e => (ed.isbn && e.isbn === ed.isbn) || e.id === ed.id)) {
+              existingBook.editions.push(ed);
+            }
+          }
+          if (!existingBook.cover && b.cover) existingBook.cover = b.cover;
+        }
+      }
+    }
+  }
+
+  return Array.from(mergedMap.values());
 }
 
 export default function Home() {

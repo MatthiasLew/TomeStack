@@ -30,14 +30,49 @@ const BN_API_BASE = process.env.DATA_BN_API_URL || "https://data.bn.org.pl/api";
  */
 export function cleanAuthor(rawAuthor?: string): string {
   if (!rawAuthor) return "";
-  const cleaned = rawAuthor.replace(/\(\d{4}-?\s*\d*\)/g, "").trim();
-  const commaIdx = cleaned.indexOf(",");
-  if (commaIdx !== -1) {
-    const lastName = cleaned.substring(0, commaIdx).trim();
-    const firstName = cleaned.substring(commaIdx + 1).replace(/\.$/, "").trim();
+  const str = rawAuthor.trim();
+
+  // 1. If there are parentheses containing dates e.g. 'Orwell, George (1903-1950) Mirkowicz, Tomasz (1953-2003)':
+  // In BN catalog, the primary author is the first entry ending at their parenthesized date.
+  const dateMatch = str.match(/^([^,]+),\s*([^()]+?)(?:\s*\([0-9\s–-]+\))(?:\s+.*)?$/);
+  if (dateMatch) {
+    const lastName = dateMatch[1].trim();
+    let firstName = dateMatch[2].trim();
+    if (!/[A-Z]\.$/.test(firstName)) {
+      firstName = firstName.replace(/\.$/, "").trim();
+    }
     return `${firstName} ${lastName}`.trim();
   }
-  return cleaned.replace(/\.$/, "").trim();
+
+  // 2. Fallback: If no dates, check for commas
+  const commaIdx = str.indexOf(",");
+  if (commaIdx !== -1) {
+    const lastName = str.substring(0, commaIdx).trim();
+    let rest = str.substring(commaIdx + 1).trim();
+
+    // If there is a second comma, e.g. 'Adamik, Helena Kaszuba, Józef'
+    const secondCommaIdx = rest.indexOf(",");
+    if (secondCommaIdx !== -1) {
+      const beforeSecond = rest.substring(0, secondCommaIdx).trim();
+      const words = beforeSecond.split(/\s+/);
+      if (words.length > 1) {
+        rest = words.slice(0, -1).join(" ");
+      } else {
+        rest = beforeSecond;
+      }
+    }
+
+    // Cut off any publisher/organization keywords merged into author
+    rest = rest.split(/\s+(?:Wydawnictwo|Oficyna|Instytut|Spółka|Graf|Da Capo|PIW|Zysk)\b/i)[0];
+
+    let firstName = rest.trim();
+    if (!/[A-Z]\.$/.test(firstName)) {
+      firstName = firstName.replace(/\.$/, "").trim();
+    }
+    return `${firstName} ${lastName}`.trim();
+  }
+
+  return str.replace(/\.$/, "").trim();
 }
 
 /**

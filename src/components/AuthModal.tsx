@@ -19,6 +19,7 @@ export function AuthModal({ lang, onClose, onLogin }: AuthModalProps) {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
   const firstInputRef = useRef<HTMLInputElement>(null);
+  const isBackdropClick = useRef(false);
 
   useEffect(() => {
     firstInputRef.current?.focus();
@@ -60,7 +61,16 @@ export function AuthModal({ lang, onClose, onLogin }: AuthModalProps) {
   };
   const field = 'w-full bg-gray-800 border border-gray-700 rounded-xl p-3 text-white focus:outline-none focus:ring-2 focus:ring-brand-500';
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md" onClick={(e) => { if (e.target === e.currentTarget) onClose?.(); }}>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md"
+      onMouseDown={(e) => {
+        isBackdropClick.current = (e.target === e.currentTarget);
+      }}
+      onClick={(e) => {
+        if (isBackdropClick.current && e.target === e.currentTarget) onClose?.();
+        isBackdropClick.current = false;
+      }}
+    >
       <section role="dialog" aria-modal="true" aria-labelledby="auth-title" className="bg-gray-900 border border-gray-700 w-full max-w-md rounded-2xl p-6 space-y-4 shadow-2xl">
         <div className="flex justify-between items-center gap-3">
           <h2 id="auth-title" className="text-lg font-bold text-white">

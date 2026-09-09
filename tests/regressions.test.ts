@@ -73,3 +73,23 @@ test('shelfSync handles local and unconfigured environments gracefully', async (
   assert.equal(await saveUserReadingStatusToCloud('local-test', 'book-1', 'reading'), false);
   assert.equal(await flushSyncQueue('local-test'), 0);
 });
+test('cleanAuthor strips translators, contributors and publishers from BN author records', () => {
+  assert.equal(
+    cleanAuthor('Orwell, George (1903-1950) Mirkowicz, Tomasz (1953-2003)'),
+    'George Orwell'
+  );
+  assert.equal(
+    cleanAuthor('Orwell, George (1903-1950) Zborski, Bartłomiej Oficyna Wydawnicza Graf'),
+    'George Orwell'
+  );
+  assert.equal(
+    cleanAuthor('Orwell, George (1903-1950) Sandauer, Artur (1913-1989) Mirkowicz, Tomasz (1953-2003) Państwowy Instytut Wydawniczy'),
+    'George Orwell'
+  );
+});
+test('sanitizeAuthor and series deduplication merge duplicate author sliders into one', async () => {
+  const { sanitizeAuthor } = await import('../src/lib/library/catalog');
+  assert.equal(sanitizeAuthor('George Mirkowicz, Tomasz Orwell'), 'George Orwell');
+  assert.equal(sanitizeAuthor('George Zborski, Bartłomiej Oficyna Wydawnicza Graf Orwell'), 'George Orwell');
+});
+

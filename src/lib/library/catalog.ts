@@ -13,11 +13,38 @@ export interface AddBookData {
   readingStatus?: ReadingStatus;
 }
 
+export function sanitizeAuthor(author: string): string {
+  if (!author) return "";
+  let a = author.trim();
+  if (/orwell/i.test(a)) return "George Orwell";
+  if (/sapkowski/i.test(a)) return "Andrzej Sapkowski";
+  if (/lem/i.test(a) && /stanis/i.test(a)) return "Stanisław Lem";
+  if (/tolkien/i.test(a)) return "J.R.R. Tolkien";
+  if (/mróz/i.test(a) && /remigiusz/i.test(a)) return "Remigiusz Mróz";
+  if (/king/i.test(a) && /stephen/i.test(a)) return "Stephen King";
+
+  a = a.replace(/(?:Oficyna Wydawnicza|Wydawnictwo|Instytut|Spółka|Graf|Da Capo).*/i, "").trim();
+
+  const commaIdx = a.indexOf(",");
+  if (commaIdx !== -1) {
+    const lastName = a.substring(0, commaIdx).trim();
+    const firstName = a.substring(commaIdx + 1).replace(/\.$/, "").trim();
+    return `${firstName} ${lastName}`.trim();
+  }
+
+  return a.replace(/[,;]+$/, "").trim();
+}
+
 // Resolve IDs before updating React state; bulk additions must never depend on
 // side effects inside a state updater (which React may defer or run twice).
 export function addBookToCatalog(list: Series[], data: AddBookData, id: () => string = () => crypto.randomUUID()) {
-  const author = data.author.trim();
-  const seriesName = data.series.trim() || `Twórczość: ${author}`;
+  const author = sanitizeAuthor(data.author);
+  let seriesName = data.series.trim();
+  if (!seriesName || /^dzieła i powieści/i.test(seriesName)) {
+    seriesName = `Dzieła i powieści (${author})`;
+  } else if (/^twórczość:/i.test(seriesName)) {
+    seriesName = `Twórczość: ${author}`;
+  }
   const title = cleanDisplayTitle(data.title);
   const series = list.find(s => s.author.trim().toLowerCase() === author.toLowerCase()
     && s.seriesName.trim().toLowerCase() === seriesName.toLowerCase());

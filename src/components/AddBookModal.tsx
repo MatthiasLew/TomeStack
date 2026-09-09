@@ -36,6 +36,7 @@ export const AddBookModal: React.FC<AddBookModalProps> = ({
   const [isbn, setIsbn] = useState(initialIsbn);
   const [metadata, setMetadata] = useState<{ cover?: string; publisher?: string; publicationYear?: number }>({});
   const [showScanner, setShowScanner] = useState(false);
+  const isBackdropClick = React.useRef(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -165,7 +166,13 @@ export const AddBookModal: React.FC<AddBookModalProps> = ({
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      onMouseDown={(e) => {
+        isBackdropClick.current = (e.target === e.currentTarget);
+      }}
+      onClick={(e) => {
+        if (isBackdropClick.current && e.target === e.currentTarget) onClose();
+        isBackdropClick.current = false;
+      }}
     >
       <div
         role="dialog"

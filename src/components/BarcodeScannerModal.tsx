@@ -31,6 +31,7 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
   const detected = useRef(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const readerElementId = "tome-barcode-reader";
+  const isBackdropClick = useRef(false);
 
   const startScanning = useCallback((cameraId?: string) => {
     const version = generation.current;
@@ -117,7 +118,13 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      onMouseDown={(e) => {
+        isBackdropClick.current = (e.target === e.currentTarget);
+      }}
+      onClick={(e) => {
+        if (isBackdropClick.current && e.target === e.currentTarget) onClose();
+        isBackdropClick.current = false;
+      }}
     >
       <div
         role="dialog"

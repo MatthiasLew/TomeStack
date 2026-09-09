@@ -5,6 +5,7 @@ import { Language, BindingFormat, ReadingStatus } from "@/types";
 import { BookCover } from "./BookCover";
 import { Search, X, Loader2, Check, Plus, BookOpen, Library } from "lucide-react";
 import { cleanDisplayTitle } from "@/lib/api/bookProviders";
+import { sanitizeAuthor } from "@/lib/library/catalog";
 
 interface AuthorBookResult {
   title: string;
@@ -124,8 +125,11 @@ export const AuthorSearchModal: React.FC<AuthorSearchModalProps> = ({
     return `Dzieła i powieści (${authorName})`;
   };
 
+  const isBackdropClick = React.useRef(false);
+
   const handleAdd = (b: AuthorBookResult, status: ReadingStatus = "unread") => {
-    const author = b.author || searchedAuthor;
+    const raw = b.author || searchedAuthor;
+    const author = sanitizeAuthor(raw) || searchedAuthor;
     const cleanTitle = cleanDisplayTitle(b.title);
     const seriesName = detectSeriesName(cleanTitle, author);
     const key = `${cleanTitle}-${b.isbn || "no-isbn"}`;
@@ -146,7 +150,8 @@ export const AuthorSearchModal: React.FC<AuthorSearchModalProps> = ({
   const handleAddAll = () => {
     const nextSet = new Set(addedIds);
     books.forEach((b) => {
-      const author = b.author || searchedAuthor;
+      const raw = b.author || searchedAuthor;
+      const author = sanitizeAuthor(raw) || searchedAuthor;
       const cleanTitle = cleanDisplayTitle(b.title);
       const seriesName = detectSeriesName(cleanTitle, author);
       const key = `${cleanTitle}-${b.isbn || "no-isbn"}`;
@@ -159,8 +164,8 @@ export const AuthorSearchModal: React.FC<AuthorSearchModalProps> = ({
         formatType: b.formatType,
         isbn: b.isbn,
         cover: b.coverUrl,
-      publisher: b.publisher,
-      publicationYear: b.publicationYear,
+        publisher: b.publisher,
+        publicationYear: b.publicationYear,
         readingStatus: "unread",
       });
     });
@@ -171,7 +176,16 @@ export const AuthorSearchModal: React.FC<AuthorSearchModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200"
+      onMouseDown={(e) => {
+        isBackdropClick.current = e.target === e.currentTarget;
+      }}
+      onClick={(e) => {
+        if (isBackdropClick.current && e.target === e.currentTarget) onClose();
+        isBackdropClick.current = false;
+      }}
+    >
       <div className="bg-gray-900 border border-gray-700 w-full max-w-4xl rounded-2xl overflow-hidden shadow-2xl flex flex-col max-h-[92vh]">
         {/* Modal Header */}
         <div className="p-5 sm:p-6 border-b border-gray-800 flex items-start justify-between bg-gray-950/80">
