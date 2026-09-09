@@ -22,10 +22,15 @@ CREATE TABLE IF NOT EXISTS public.user_books (
   book_id TEXT NOT NULL,
   edition_id TEXT NOT NULL,
   format_type TEXT DEFAULT 'hardcover',
+  reading_status TEXT DEFAULT 'unread',
+  is_hidden BOOLEAN DEFAULT FALSE,
   notes TEXT,
   updated_at TIMESTAMPTZ DEFAULT NOW(),
   CONSTRAINT user_book_unique UNIQUE (user_id, book_id)
 );
+
+ALTER TABLE public.user_books ADD COLUMN IF NOT EXISTS reading_status TEXT DEFAULT 'unread';
+ALTER TABLE public.user_books ADD COLUMN IF NOT EXISTS is_hidden BOOLEAN DEFAULT FALSE;
 
 -- 3. Custom User Books (User-added books from camera scanner or manual entry)
 CREATE TABLE IF NOT EXISTS public.custom_books (

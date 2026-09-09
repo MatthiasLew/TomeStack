@@ -94,14 +94,14 @@ export const SeriesCard: React.FC<SeriesCardProps> = ({
   }
 
   return (
-    <div className="card-glass rounded-2xl p-5 sm:p-6 border border-gray-800/80 shadow-xl space-y-4 transition-all">
+    <div className="card-glass rounded-2xl p-3.5 sm:p-6 border border-gray-800/80 shadow-xl space-y-4 transition-all overflow-hidden">
       {/* Series Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-800/70 pb-4">
-        <div className="flex-1">
+        <div className="flex-1 min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <h3
               onClick={handleToggle}
-              className="text-xl font-bold font-serif text-white tracking-wide cursor-pointer hover:text-brand-300 transition flex items-center gap-2 group select-none"
+              className="text-lg sm:text-xl font-bold font-serif text-white tracking-wide cursor-pointer hover:text-brand-300 transition flex items-center gap-2 group select-none"
             >
               <span>{series.seriesName}</span>
               <span className="text-gray-500 group-hover:text-brand-400 transition text-sm">
@@ -138,8 +138,8 @@ export const SeriesCard: React.FC<SeriesCardProps> = ({
         </div>
 
         {/* Progress bar info & Toggle button */}
-        <div className="flex items-center gap-3 sm:justify-end">
-          <div className="sm:text-right min-w-[130px]">
+        <div className="flex flex-wrap sm:flex-nowrap items-center gap-3 sm:justify-end w-full sm:w-auto">
+          <div className="text-left sm:text-right w-full sm:w-auto sm:min-w-[130px]">
             <div className="flex items-center justify-between sm:justify-end gap-2 text-xs font-semibold text-gray-300 mb-1">
               <span className="text-gray-400 font-normal">{t.progress}</span>
               <span className={isComplete ? "text-emerald-400" : "text-amber-400"}>
@@ -228,7 +228,7 @@ export const SeriesCard: React.FC<SeriesCardProps> = ({
         </div>
       ) : (
         /* Books Grid */
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-4 gap-4 pt-1">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-4 gap-2.5 sm:gap-4 pt-1">
         {visibleBooks.map((book) => {
           const isOwned = Boolean(currentUser?.ownedBooks && currentUser.ownedBooks[book.id]);
           const selectedEditionId = currentUser?.ownedBooks?.[book.id];

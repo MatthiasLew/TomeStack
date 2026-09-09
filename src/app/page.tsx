@@ -36,7 +36,10 @@ import {
 import {
   loadUserShelfFromCloud,
   saveUserBookToCloud,
+  saveUserReadingStatusToCloud,
+  saveUserBookHiddenToCloud,
   removeUserBookFromCloud,
+  flushSyncQueue,
 } from "@/lib/supabase/shelfSync";
 
 import { useAccount, shelfKey } from "@/hooks/useAccount";
@@ -60,6 +63,7 @@ function LibraryHome({ currentUser, setCurrentUser, logout, error }: ReturnType<
   const seriesRef = React.useRef<Series[]>([]);
   const [shelfLoaded, setShelfLoaded] = useState(false);
   const [storageError, setStorageError] = useState('');
+  const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'saved' | 'error'>('idle');
   const mutationVersion = React.useRef(0);
   const mounted = React.useRef(true);
   React.useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
@@ -86,7 +90,15 @@ function LibraryHome({ currentUser, setCurrentUser, logout, error }: ReturnType<
   }, [seriesList, shelfLoaded, storageKey]);
   React.useEffect(() => { document.documentElement.lang = lang; }, [lang]);
   const reportSync = (ok: boolean) => {
-    if (!ok && supabase && mounted.current) setStorageError('Zmiana jest lokalna: zapis w chmurze nie powiódł się. / Change is local: cloud save failed.');
+    if (mounted.current) {
+      if (ok) {
+        setSyncStatus('saved');
+        setStorageError('');
+      } else if (supabase) {
+        setSyncStatus('error');
+        setStorageError('Zmiana jest lokalna: zapis w chmurze nie powiódł się (zapisano w kolejce offline). / Change is local: cloud save failed (queued offline).');
+      }
+    }
   };
 
   // Handler to load demo library on user request
@@ -201,13 +213,34 @@ function LibraryHome({ currentUser, setCurrentUser, logout, error }: ReturnType<
     if (!currentUserId) return;
     let cancelled = false;
     const version = mutationVersion.current;
-    loadUserShelfFromCloud(currentUserId).then(cloudShelf => {
-      if (!cancelled && cloudShelf !== null && version === mutationVersion.current) {
-        setCurrentUser(prev => prev?.id === currentUserId ? { ...prev, ownedBooks: cloudShelf } : prev);
+    loadUserShelfFromCloud(currentUserId).then(cloudData => {
+      if (!cancelled && cloudData !== null && version === mutationVersion.current) {
+        setCurrentUser(prev => prev?.id === currentUserId ? {
+          ...prev,
+          ownedBooks: { ...(prev.ownedBooks || {}), ...cloudData.ownedBooks },
+          readingStatus: { ...(prev.readingStatus || {}), ...cloudData.readingStatus },
+          hiddenBooks: { ...(prev.hiddenBooks || {}), ...cloudData.hiddenBooks },
+        } : prev);
+        setSyncStatus('saved');
       }
     });
     return () => { cancelled = true; };
   }, [currentUserId, setCurrentUser]);
+
+  // Flush offline retry queue when connection restored
+  React.useEffect(() => {
+    if (!currentUserId || typeof window === 'undefined') return;
+    const handleOnline = () => {
+      void flushSyncQueue(currentUserId).then(count => {
+        if (count > 0 && mounted.current) {
+          setSyncStatus('saved');
+          setStorageError('');
+        }
+      });
+    };
+    window.addEventListener('online', handleOnline);
+    return () => { window.removeEventListener('online', handleOnline); };
+  }, [currentUserId]);
 
   const handleToggleOwned = (bookId: string, defaultEditionId: string) => {
     if (!currentUser) {
@@ -218,10 +251,14 @@ function LibraryHome({ currentUser, setCurrentUser, logout, error }: ReturnType<
     const currentOwned = { ...(currentUser.ownedBooks || {}) };
     if (currentOwned[bookId]) {
       delete currentOwned[bookId];
+      setSyncStatus('syncing');
       void removeUserBookFromCloud(currentUser.id, bookId).then(reportSync);
     } else {
       currentOwned[bookId] = defaultEditionId;
-      void saveUserBookToCloud(currentUser.id, bookId, defaultEditionId).then(reportSync);
+      setSyncStatus('syncing');
+      const readingStatus = currentUser.readingStatus?.[bookId];
+      const isHidden = currentUser.hiddenBooks?.[bookId];
+      void saveUserBookToCloud(currentUser.id, bookId, defaultEditionId, readingStatus, isHidden).then(reportSync);
     }
 
     mutationVersion.current++;
@@ -235,7 +272,10 @@ function LibraryHome({ currentUser, setCurrentUser, logout, error }: ReturnType<
     }
 
     mutationVersion.current++;
-    void saveUserBookToCloud(currentUser.id, bookId, editionId).then(reportSync);
+    setSyncStatus('syncing');
+    const readingStatus = currentUser.readingStatus?.[bookId];
+    const isHidden = currentUser.hiddenBooks?.[bookId];
+    void saveUserBookToCloud(currentUser.id, bookId, editionId, readingStatus, isHidden).then(reportSync);
     setCurrentUser(prev => prev ? { ...prev, ownedBooks: { ...prev.ownedBooks, [bookId]: editionId } } : prev);
   };
 
@@ -245,6 +285,10 @@ function LibraryHome({ currentUser, setCurrentUser, logout, error }: ReturnType<
       setIsAuthOpen(true);
       return;
     }
+
+    setSyncStatus('syncing');
+    const editionId = currentUser.ownedBooks?.[bookId] || '';
+    void saveUserReadingStatusToCloud(currentUser.id, bookId, status, editionId).then(reportSync);
 
     setCurrentUser(prev => {
       if (!prev) return prev;
@@ -262,11 +306,16 @@ function LibraryHome({ currentUser, setCurrentUser, logout, error }: ReturnType<
     }
 
     const currentHidden = { ...(currentUser.hiddenBooks || {}) };
-    if (currentHidden[bookId]) {
-      delete currentHidden[bookId];
-    } else {
+    const willBeHidden = !currentHidden[bookId];
+    if (willBeHidden) {
       currentHidden[bookId] = true;
+    } else {
+      delete currentHidden[bookId];
     }
+
+    setSyncStatus('syncing');
+    const editionId = currentUser.ownedBooks?.[bookId] || '';
+    void saveUserBookHiddenToCloud(currentUser.id, bookId, willBeHidden, editionId).then(reportSync);
 
     const updatedUser = { ...currentUser, hiddenBooks: currentHidden };
     setCurrentUser(updatedUser);
@@ -415,7 +464,32 @@ function LibraryHome({ currentUser, setCurrentUser, logout, error }: ReturnType<
         onSearchChange={setSearchQuery}
       />
 
-      {(storageError || error) && <p role="alert" className="p-4 text-amber-300">{storageError || error}</p>}
+      {(storageError || error) && (
+        <div role="alert" className="p-3 bg-amber-950/40 border-b border-amber-800/40 text-amber-300 text-xs flex items-center justify-between gap-2">
+          <span>{storageError || error}</span>
+          {currentUser && (
+            <button
+              onClick={() => {
+                void flushSyncQueue(currentUser.id).then(count => {
+                  if (count > 0 && mounted.current) {
+                    setSyncStatus('saved');
+                    setStorageError('');
+                  }
+                });
+              }}
+              className="px-2.5 py-1 text-xs bg-amber-600 hover:bg-amber-500 text-black font-bold rounded-lg cursor-pointer transition shrink-0"
+            >
+              {lang === 'pl' ? 'Ponów zapis' : 'Retry sync'}
+            </button>
+          )}
+        </div>
+      )}
+      {syncStatus === 'syncing' && !storageError && (
+        <div className="px-4 py-1.5 bg-brand-950/40 text-brand-300 text-xs flex items-center gap-2 border-b border-brand-900/30">
+          <span className="animate-spin">🔄</span>
+          <span>{lang === 'pl' ? 'Synchronizacja z chmurą...' : 'Syncing with cloud...'}</span>
+        </div>
+      )}
       {/* User Banner */}
       <UserBanner
         currentUser={currentUser}
